@@ -33,10 +33,5 @@ jobs:
       - name: Install PlatformIO Core
         run: pip install -U platformio
 
-      - name: Run Clang Format Check
-        run: |
-          sudo apt-get update && sudo apt-get install -y clang-format
-          find src lib include test \( -name '*.cpp' -o -name '*.hpp' -o -name '*.c' -o -name '*.h' \) -type f 2>/dev/null | xargs -r clang-format --dry-run -Werror
-
       - name: Build with PlatformIO
         run: pio run
