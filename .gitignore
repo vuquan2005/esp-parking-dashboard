@@ -1,0 +1,17 @@
+.pio
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+compile_commands.json
+.cache/
+.clangd/
+build/
+*.bin
+*.elf
+*.map
+*.hex
+*.a
+*.o
+*.obj
+*~
+.DS_Store

@@ -1,0 +1,10 @@
+CompileFlags:
+  Add: [-Wno-unknown-warning-option, -Wno-unused-command-line-argument]
+  Remove: 
+    - -mlongcalls
+    - -fstrict-volatile-bitfields
+    - -fno-tree-switch-conversion
+    - -fno-section-anchors
+    - -fno-shrink-wrap
+
+    

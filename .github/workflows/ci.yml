@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pio
+          restore-keys: |
+            ${{ runner.os }}-pio
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-pio
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO Core
+        run: pip install -U platformio
+
+      - name: Run Clang Format Check
+        run: |
+          sudo apt-get update && sudo apt-get install -y clang-format
+          find src lib include test \( -name '*.cpp' -o -name '*.hpp' -o -name '*.c' -o -name '*.h' \) -type f 2>/dev/null | xargs -r clang-format --dry-run -Werror
+
+      - name: Build with PlatformIO
+        run: pio run

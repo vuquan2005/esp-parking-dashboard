@@ -1,0 +1,1 @@
+/home/vuquan/dev/parking-dashboard/dist/index.minify.h

@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package iot.parking;
+
+message Parking {
+  oneof payload {
+    WifiScanning  wifi_scanning  = 1;
+    ScanResults   scan_results   = 2;
+    DeviceStatus  wifi_status    = 3;
+    ParkingStatus parking_status = 4;
+    ParkingEvent  parking_event  = 5;
+    WifiConfig    wifi_config    = 6;
+  }
+}
+
+message WifiScanning {
+}
+
+message ScanResults {
+  message AP {
+    string       ssid       = 1; // max_size: 32 (nanopb)
+    bytes        bssid      = 2; // 6 bytes MAC address (nanopb)
+    int32        rssi       = 3;
+    uint32       channel    = 4;
+    WifiAuthMode encryption = 5;
+  }
+
+  enum WifiAuthMode {
+    WIFI_AUTH_OPEN                    = 0;
+    WIFI_AUTH_WEP                     = 1;
+    WIFI_AUTH_WPA_PSK                 = 2;
+    WIFI_AUTH_WPA2_PSK                = 3;
+    WIFI_AUTH_WPA_WPA2_PSK            = 4;
+    WIFI_AUTH_ENTERPRISE              = 5;
+    // WIFI_AUTH_WPA2_ENTERPRISE         = 5;
+    WIFI_AUTH_WPA3_PSK                = 6;
+    WIFI_AUTH_WPA2_WPA3_PSK           = 7;
+    WIFI_AUTH_WAPI_PSK                = 8;
+    WIFI_AUTH_OWE                     = 9;
+    WIFI_AUTH_WPA3_ENT_192            = 10;
+    WIFI_AUTH_WPA3_EXT_PSK            = 11;
+    WIFI_AUTH_WPA3_EXT_PSK_MIXED_MODE = 12;
+    WIFI_AUTH_DPP                     = 13;
+    WIFI_AUTH_WPA3_ENTERPRISE         = 14;
+    WIFI_AUTH_WPA2_WPA3_ENTERPRISE    = 15;
+    WIFI_AUTH_WPA_ENTERPRISE          = 16;
+  }
+
+  repeated AP access_points = 1; // max_count: 10 (nanopb)
+
+}
+
+message DeviceStatus {
+  bool     connected           = 1;
+  WifiMode wifi_mode           = 2;
+
+  string   sta_ssid            = 3; // max_size: 32 (nanopb)
+  string   sta_ip              = 4; // max_size: 16 (nanopb)
+
+  string   ap_ssid             = 5; // max_size: 32 (nanopb)
+  string   ap_ip               = 6; // max_size: 16 (nanopb)
+  string   ap_password         = 7; // max_size: 64 (nanopb)
+
+  int32    rssi                = 8;
+  uint32   channel             = 9;
+
+  uint32   free_heap           = 10;
+  uint32   min_free_heap       = 11;
+  uint32   max_free_block_size = 12;
+  uint32   uptime_seconds      = 13;
+
+  enum WifiMode {
+    WIFI_MODE_NULL  = 0;
+    WIFI_MODE_STA   = 1;
+    WIFI_MODE_AP    = 2;
+    WIFI_MODE_APSTA = 3;
+    WIFI_MODE_NAN   = 4;
+  }
+}
+
+message WifiConfig {
+  string sta_ssid     = 1; // max_size: 32 (nanopb)
+  string sta_password = 2; // max_size: 64 (nanopb)
+  string ap_ssid      = 3; // max_size: 32 (nanopb)
+  string ap_password  = 4; // max_size: 64 (nanopb)
+  uint32 channel      = 5;
+}
+
+message ParkingStatus {
+  repeated SlotStatus slots = 1; // max_count: 15 (nanopb)
+}
+
+message SlotStatus {
+  uint32         slot_id = 1;
+  Status         status  = 2;
+  repeated bytes rfid    = 3; // raw RFID tag bytes (10 bytes each), max_count: 15 (nanopb)
+  uint32         pallet_id = 4;
+
+  enum Status {
+    UNKNOWN    = 0;
+    NO_PALLET  = 1;
+    EMPTY      = 2;
+    OCCUPIED   = 3;
+    PROCESSING = 4;
+    PENDING    = 5;
+  }
+
+}
+
+message ParkingEvent {
+  uint32       event_id     = 1;
+  uint32       slot_id      = 2;
+  uint64       timestamp    = 3; // Unix epoch time in milliseconds
+  EventType    event_type   = 4;
+  bytes        rfid         = 5;
+  uint32       step         = 6; // (process%) 1, 2, 3, 4, 5,...
+  uint32       total_steps  = 7;
+  ParkingSteps current_step = 8;
+
+  enum EventType {
+    UNKNOWN = 0;
+    IN      = 1;
+    OUT     = 2;
+  }
+}
+
+message ParkingSteps {
+  uint32 step_id = 1;
+  Task   task    = 2;
+
+  enum Task {
+    UNKNOWN    = 0;
+    MOVE_UP    = 1;
+    MOVE_DOWN  = 2;
+    MOVE_LEFT  = 3;
+    MOVE_RIGHT = 4;
+    PICK_UP    = 5;
+  }
+}
