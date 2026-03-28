@@ -4,9 +4,9 @@
 
 // ===== AP Configuration =====
 const char *ap_ssid = "ESP32-Dashboard";
-const char *ap_password = "password123"; // Empty string ("") for open network
-const int ap_channel = 1;                // Wi-Fi Channel
-const int ap_max_conn = 4;               // Max simultaneous connections
+const char *ap_password = "";
+const int ap_channel = 1;
+const int ap_max_conn = 4;
 
 // IP Configuration for AP
 IPAddress local_ip(192, 168, 4, 1);

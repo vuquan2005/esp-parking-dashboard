@@ -5,12 +5,5 @@
         ".clangd": ".clang-format, compile_commands.json",
         "README.md": "CHANGELOG.md, LICENSE, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SUPPORT.md",
         ".gitignore": ".gitkeep, .gitmodules, .gitattributes"
-    },
-    "clangd.arguments": [
-        "--compile-commands-dir=${workspaceFolder}",
-        "--background-index",
-        "--clang-tidy",
-        "--log=verbose",
-        "--query-driver=/home/vuquan/.platformio/packages/toolchain-xtensa-esp32/bin/xtensa-esp32-elf-*"
-    ]
+    }
 }
