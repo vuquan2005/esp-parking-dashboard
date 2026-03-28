@@ -1,12 +1,12 @@
 #include "Arduino.h"
-#include <WiFi.h>
 #include "websever.h" // WebManager for Captive Portal & Dashboard
+#include <WiFi.h>
 
 // ===== AP Configuration =====
-const char* ap_ssid = "ESP32-Dashboard";
-const char* ap_password = "password123"; // Empty string ("") for open network
-const int ap_channel = 1;      // Wi-Fi Channel
-const int ap_max_conn = 4;     // Max simultaneous connections
+const char *ap_ssid = "ESP32-Dashboard";
+const char *ap_password = "password123"; // Empty string ("") for open network
+const int ap_channel = 1;                // Wi-Fi Channel
+const int ap_max_conn = 4;               // Max simultaneous connections
 
 // IP Configuration for AP
 IPAddress local_ip(192, 168, 4, 1);
@@ -18,13 +18,13 @@ WebManager webManager;
 
 void setupAP() {
     Serial.println("\n[System] Initializing Access Point (AP)...");
-    
+
     // Set WiFi mode to Access Point
     WiFi.mode(WIFI_AP);
-    
+
     // Configure IP Addresses
     WiFi.softAPConfig(local_ip, gateway, subnet);
-    
+
     // Start AP with custom configuration
     if (WiFi.softAP(ap_ssid, ap_password, ap_channel, 0, ap_max_conn)) {
         Serial.print("[System] AP Network '");
@@ -38,12 +38,11 @@ void setupAP() {
 }
 
 void setup() {
-    Serial.begin(115200);    
+    Serial.begin(115200);
     setupAP();
     webManager.begin();
 }
 
 void loop() {
     webManager.loop();
-    
 }

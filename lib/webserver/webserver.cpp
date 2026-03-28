@@ -1,6 +1,5 @@
 #include "index.minify.h"
 #include "websever.h"
-#include "parking.pb.h"
 
 const byte DNS_PORT = 53;
 
