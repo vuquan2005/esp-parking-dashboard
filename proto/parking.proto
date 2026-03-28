@@ -1,7 +1,5 @@
 syntax = "proto3";
 
-package iot.parking;
-
 message Parking {
   oneof payload {
     WifiScanning  wifi_scanning  = 1;
@@ -83,7 +81,6 @@ message WifiConfig {
   string sta_password = 2; // max_size: 64 (nanopb)
   string ap_ssid      = 3; // max_size: 32 (nanopb)
   string ap_password  = 4; // max_size: 64 (nanopb)
-  uint32 channel      = 5;
 }
 
 message ParkingStatus {

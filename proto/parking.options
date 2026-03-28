@@ -1,0 +1,29 @@
+# Nanopb options for parking.proto
+# Use static allocation for strings and repeated fields on ESP32
+
+# ScanResults.AP
+ScanResults.AP.ssid                   max_size:33
+ScanResults.AP.bssid                  max_size:6, fixed_length:true
+ScanResults.access_points             max_count:10
+
+# DeviceStatus
+DeviceStatus.sta_ssid                 max_size:33
+DeviceStatus.sta_ip                   max_size:16
+DeviceStatus.ap_ssid                  max_size:33
+DeviceStatus.ap_ip                    max_size:16
+DeviceStatus.ap_password              max_size:65
+
+# WifiConfig
+WifiConfig.sta_ssid                   max_size:33
+WifiConfig.sta_password               max_size:65
+WifiConfig.ap_ssid                    max_size:33
+WifiConfig.ap_password                max_size:65
+
+# ParkingStatus
+ParkingStatus.slots                   max_count:15
+
+# SlotStatus
+SlotStatus.rfid                       max_count:15, max_size:10, fixed_length:true
+
+# ParkingEvent
+ParkingEvent.rfid                     max_size:10, fixed_length:true

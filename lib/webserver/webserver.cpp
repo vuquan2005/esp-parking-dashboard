@@ -3,7 +3,7 @@
 
 const byte DNS_PORT = 53;
 
-WebManager::WebManager() : server(80), ws("/ws"), serverStarted(false) {}
+WebManager::WebManager() : server(80), ws("/ws"), serverStarted(false), wsCallback(nullptr) {}
 
 void WebManager::begin() {
     Serial.println("[WebManager] Initializing Web Services...");
@@ -39,14 +39,14 @@ void WebManager::loop() {
     ws.cleanupClients();
 }
 
+void WebManager::setWsEventCallback(WsEventCallback callback) { wsCallback = callback; }
+
+void WebManager::sendBinary(const uint8_t *data, size_t len) { ws.binaryAll(data, len); }
+
 void WebManager::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
                            void *arg, uint8_t *data, size_t len) {
-    if (type == WS_EVT_CONNECT) {
-        Serial.printf("[WebManager] WebSocket client #%u connected from %s\n", client->id(),
-                      client->remoteIP().toString().c_str());
-    } else if (type == WS_EVT_DISCONNECT) {
-        Serial.printf("[WebManager] WebSocket client #%u disconnected\n", client->id());
-    } else if (type == WS_EVT_DATA) {
-        // Handle incoming data
+    // Chuyển tiếp event cho callback đã đăng ký (ParkingHandler trong src/)
+    if (wsCallback) {
+        wsCallback(server, client, type, arg, data, len);
     }
 }
