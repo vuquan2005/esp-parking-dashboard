@@ -34,6 +34,7 @@ void setupAP() {
         Serial.println(WiFi.softAPIP());
     } else {
         Serial.println("[System] ERROR: Failed to start AP network.");
+        
     }
 }
 
