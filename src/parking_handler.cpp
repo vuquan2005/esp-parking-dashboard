@@ -69,7 +69,7 @@ void ParkingHandler::sendDeviceStatus()
 
     if (sendParking(msg))
     {
-        Serial.println("[ParkingHandler] DeviceStatus sent");
+        Serial.println("Status sent");
     }
 }
 
@@ -135,18 +135,20 @@ void ParkingHandler::handleBinaryData(AsyncWebSocketClient *client, uint8_t *dat
 
 void ParkingHandler::sendWifiScanResults(int n)
 {
-    if (n <= 0)
+    if (n < 0)
+    {
+        Serial.println("[ParkingHandler] Wifi scan failed, returning empty results");
+    }
+    else if (n == 0)
     {
         Serial.println("[ParkingHandler] Wifi scan returned no APs");
-        WiFi.scanDelete();
-        return;
     }
 
     Parking msg = Parking_init_zero;
     msg.which_payload = Parking_scan_results_tag;
     ScanResults &results = msg.payload.scan_results;
 
-    int count = min(n, 10);
+    int count = (n > 0) ? min(n, 10) : 0;
     results.access_points_count = count;
 
     for (int i = 0; i < count; i++)
@@ -197,11 +199,9 @@ void ParkingHandler::handleWifiScanning(AsyncWebSocketClient *client)
     if (n == WIFI_SCAN_FAILED)
     {
         Serial.println("[ParkingHandler] WiFi scan failed to start");
+        sendWifiScanResults(WIFI_SCAN_FAILED);
         return;
     }
-
-    // scan completed synchronously (rare) or results already available
-    sendWifiScanResults(n);
 }
 
 void ParkingHandler::loop()
@@ -213,27 +213,25 @@ void ParkingHandler::loop()
         sendStatus();
     }
 
-    if (!_scanInProgress)
+    if (_scanInProgress)
     {
-        return;
+        int n = WiFi.scanComplete();
+        if (n != WIFI_SCAN_RUNNING)
+        {
+            _scanInProgress = false;
+
+            if (n == WIFI_SCAN_FAILED)
+            {
+                Serial.println("[ParkingHandler] WiFi scan failed (async complete)");
+                WiFi.scanDelete();
+                sendWifiScanResults(WIFI_SCAN_FAILED);
+            }
+            else
+            {
+                sendWifiScanResults(n);
+            }
+        }
     }
-
-    int n = WiFi.scanComplete();
-    if (n == WIFI_SCAN_RUNNING)
-    {
-        return;
-    }
-
-    _scanInProgress = false;
-
-    if (n == WIFI_SCAN_FAILED)
-    {
-        Serial.println("[ParkingHandler] WiFi scan failed (async complete)");
-        WiFi.scanDelete();
-        return;
-    }
-
-    sendWifiScanResults(n);
 }
 
 void ParkingHandler::handleWifiConfig(AsyncWebSocketClient *client,
