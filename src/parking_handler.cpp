@@ -28,6 +28,11 @@ bool ParkingHandler::sendParking(const Parking &msg)
     return true;
 }
 
+void ParkingHandler::sendStatus()
+{
+    sendDeviceStatus();
+}
+
 void ParkingHandler::sendDeviceStatus()
 {
     Parking msg = Parking_init_zero;

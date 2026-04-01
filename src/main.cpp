@@ -19,5 +19,15 @@ void setup()
 
 void loop()
 {
+    static unsigned long lastStatusMillis = 0;
+    const unsigned long statusIntervalMs = 10UL * 1000UL; // 10 giây
+
+    unsigned long now = millis();
+    if (now - lastStatusMillis >= statusIntervalMs)
+    {
+        lastStatusMillis = now;
+        parkingHandler.sendStatus();
+    }
+
     webManager.loop();
 }

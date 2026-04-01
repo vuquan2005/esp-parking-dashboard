@@ -27,6 +27,9 @@ public:
     /// Gửi DeviceStatus cho tất cả client
     void sendDeviceStatus();
 
+    /// Gửi status tổng quát cho client (alias)
+    void sendStatus();
+
     /// Gửi ParkingStatus cho tất cả client
     void sendParkingStatus(const ParkingStatus &status);
 
