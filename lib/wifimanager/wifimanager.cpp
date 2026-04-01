@@ -10,7 +10,7 @@ void WifiManager::begin()
     WifiPrefs prefs = loadPrefs();
 
     // Set WiFi mode
-    WiFi.mode(WIFI_AP);
+    WiFi.mode(WIFI_AP_STA);
 
     const char *pass = prefs.ap_password.length() >= 8 ? prefs.ap_password.c_str() : nullptr;
 

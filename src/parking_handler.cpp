@@ -30,6 +30,12 @@ bool ParkingHandler::sendParking(const Parking &msg)
 
 void ParkingHandler::sendStatus()
 {
+    if (_webManager.clientCount() == 0)
+    {
+        // Không có client kết nối -> không gửi status lặp vô ích
+        return;
+    }
+
     sendDeviceStatus();
 }
 
@@ -127,14 +133,12 @@ void ParkingHandler::handleBinaryData(AsyncWebSocketClient *client, uint8_t *dat
     }
 }
 
-void ParkingHandler::handleWifiScanning(AsyncWebSocketClient *client)
+void ParkingHandler::sendWifiScanResults(int n)
 {
-    Serial.println("[ParkingHandler] WiFi scan requested");
-
-    int n = WiFi.scanNetworks();
-    if (n < 0)
+    if (n <= 0)
     {
-        Serial.println("[ParkingHandler] WiFi scan failed");
+        Serial.println("[ParkingHandler] Wifi scan returned no APs");
+        WiFi.scanDelete();
         return;
     }
 
@@ -150,7 +154,6 @@ void ParkingHandler::handleWifiScanning(AsyncWebSocketClient *client)
         ScanResults_AP &ap = results.access_points[i];
         strncpy(ap.ssid, WiFi.SSID(i).c_str(), sizeof(ap.ssid) - 1);
 
-        // Copy BSSID (6 bytes MAC)
         uint8_t *bssid = WiFi.BSSID(i);
         if (bssid)
         {
@@ -168,6 +171,69 @@ void ParkingHandler::handleWifiScanning(AsyncWebSocketClient *client)
     {
         Serial.printf("[ParkingHandler] ScanResults sent (%d APs)\n", count);
     }
+}
+
+void ParkingHandler::handleWifiScanning(AsyncWebSocketClient *client)
+{
+    (void)client;
+
+    if (_scanInProgress)
+    {
+        Serial.println("[ParkingHandler] WiFi scan already in progress");
+        return;
+    }
+
+    Serial.println("[ParkingHandler] WiFi scan requested (async)");
+
+    int n = WiFi.scanNetworks(true, true); // async, show_hidden
+
+    if (n == WIFI_SCAN_RUNNING)
+    {
+        _scanInProgress = true;
+        Serial.println("[ParkingHandler] WiFi scan started");
+        return;
+    }
+
+    if (n == WIFI_SCAN_FAILED)
+    {
+        Serial.println("[ParkingHandler] WiFi scan failed to start");
+        return;
+    }
+
+    // scan completed synchronously (rare) or results already available
+    sendWifiScanResults(n);
+}
+
+void ParkingHandler::loop()
+{
+    unsigned long now = millis();
+    if (now - _lastStatusMillis >= _statusIntervalMs)
+    {
+        _lastStatusMillis = now;
+        sendStatus();
+    }
+
+    if (!_scanInProgress)
+    {
+        return;
+    }
+
+    int n = WiFi.scanComplete();
+    if (n == WIFI_SCAN_RUNNING)
+    {
+        return;
+    }
+
+    _scanInProgress = false;
+
+    if (n == WIFI_SCAN_FAILED)
+    {
+        Serial.println("[ParkingHandler] WiFi scan failed (async complete)");
+        WiFi.scanDelete();
+        return;
+    }
+
+    sendWifiScanResults(n);
 }
 
 void ParkingHandler::handleWifiConfig(AsyncWebSocketClient *client,
@@ -222,6 +288,7 @@ void ParkingHandler::handleWifiConfig(AsyncWebSocketClient *client,
 void ParkingHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
                                AwsEventType type, void *arg, uint8_t *data, size_t len)
 {
+    Serial.printf("[ParkingHandler] WebSocket event: %d, Client ID: %u\n", (int)type, client->id());
     switch (type)
     {
     case WS_EVT_CONNECT:

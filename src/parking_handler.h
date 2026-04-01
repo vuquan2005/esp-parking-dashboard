@@ -27,7 +27,7 @@ public:
     /// Gửi DeviceStatus cho tất cả client
     void sendDeviceStatus();
 
-    /// Gửi status tổng quát cho client (alias)
+    /// Gửi status tổng quát cho client
     void sendStatus();
 
     /// Gửi ParkingStatus cho tất cả client
@@ -36,12 +36,22 @@ public:
     /// Gửi ParkingEvent cho tất cả client
     void sendParkingEvent(const ParkingEvent &event);
 
+    /// Vòng lặp để kiểm tra scan async
+    void loop();
+
 private:
     WebManager &_webManager;
     WifiManager &_wifiManager;
 
+    bool _scanInProgress = false;
+    unsigned long _lastStatusMillis = 0;
+    static constexpr unsigned long _statusIntervalMs = 10UL * 1000UL; // 10 giây
+
     /// Encode và gửi message Parking qua WebSocket
     bool sendParking(const Parking &msg);
+
+    /// Xử lý kết quả scan WiFi async
+    void sendWifiScanResults(int count);
 
     /// Xử lý binary data nhận từ WebSocket
     void handleBinaryData(AsyncWebSocketClient *client, uint8_t *data, size_t len);

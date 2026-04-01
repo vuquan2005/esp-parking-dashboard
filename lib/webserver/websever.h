@@ -23,6 +23,9 @@ public:
     /// Gửi binary data cho tất cả WebSocket clients
     void sendBinary(const uint8_t *data, size_t len);
 
+    /// Trả về số lượng client đang kết nối
+    size_t clientCount() const;
+
 private:
     AsyncWebServer server;
     AsyncWebSocket ws;

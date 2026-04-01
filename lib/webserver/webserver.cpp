@@ -48,9 +48,12 @@ void WebManager::setWsEventCallback(WsEventCallback callback) { wsCallback = cal
 
 void WebManager::sendBinary(const uint8_t *data, size_t len) { ws.binaryAll(data, len); }
 
+size_t WebManager::clientCount() const { return ws.count(); }
+
 void WebManager::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
                            void *arg, uint8_t *data, size_t len)
 {
+    Serial.printf("[WebManager] WebSocket event: %d, Client ID: %u\n", (int)type, client->id());
     // Chuyển tiếp event cho callback đã đăng ký (ParkingHandler trong src/)
     if (wsCallback)
     {
