@@ -5,15 +5,17 @@
 #include <WiFi.h>
 
 /// Cấu hình WiFi lưu trong NVS
-struct WifiPrefs {
+struct WifiPrefs
+{
     String ap_ssid;
     String ap_password;
     String sta_ssid;
     String sta_password;
 };
 
-class WifiManager {
-  public:
+class WifiManager
+{
+public:
     WifiManager();
 
     /// Khởi tạo và thiết lập WiFi (AP, STA nếu có)
@@ -31,6 +33,6 @@ class WifiManager {
     /// Kết nối tới STA mới
     void connectSta(const String &ssid, const String &password);
 
-  private:
+private:
     Preferences preferences;
 };

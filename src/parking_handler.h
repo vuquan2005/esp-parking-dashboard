@@ -16,8 +16,9 @@
  * nanopb generate trong quá trình build, và lib có thể biên dịch
  * trước khi file này tồn tại.
  */
-class ParkingHandler {
-  public:
+class ParkingHandler
+{
+public:
     ParkingHandler(WebManager &webManager, WifiManager &wifiManager);
 
     /// Đăng ký WebSocket event handler vào WebManager
@@ -32,7 +33,7 @@ class ParkingHandler {
     /// Gửi ParkingEvent cho tất cả client
     void sendParkingEvent(const ParkingEvent &event);
 
-  private:
+private:
     WebManager &_webManager;
     WifiManager &_wifiManager;
 

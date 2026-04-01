@@ -10,8 +10,9 @@
 using WsEventCallback = std::function<void(AsyncWebSocket *, AsyncWebSocketClient *, AwsEventType,
                                            void *, uint8_t *, size_t)>;
 
-class WebManager {
-  public:
+class WebManager
+{
+public:
     WebManager();
     void begin();
     void loop();
@@ -22,8 +23,7 @@ class WebManager {
     /// Gửi binary data cho tất cả WebSocket clients
     void sendBinary(const uint8_t *data, size_t len);
 
-
-  private:
+private:
     AsyncWebServer server;
     AsyncWebSocket ws;
     DNSServer dnsServer;

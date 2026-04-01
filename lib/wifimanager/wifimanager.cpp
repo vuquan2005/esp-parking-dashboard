@@ -2,7 +2,8 @@
 
 WifiManager::WifiManager() {}
 
-void WifiManager::begin() {
+void WifiManager::begin()
+{
     Serial.println("\n[WifiManager] Initializing Access Point (AP)...");
 
     // Load config from Preferences (NVS)
@@ -14,23 +15,29 @@ void WifiManager::begin() {
     const char *pass = prefs.ap_password.length() >= 8 ? prefs.ap_password.c_str() : nullptr;
 
     int channel = WiFi.channel();
-    if (channel == 0) channel = 1; // Default to 1 if no active WiFi interface
+    if (channel == 0)
+        channel = 1; // Default to 1 if no active WiFi interface
 
     // Start AP with config from Preferences
-    if (WiFi.softAP(prefs.ap_ssid.c_str(), pass, channel, 0, 4)) {
+    if (WiFi.softAP(prefs.ap_ssid.c_str(), pass, channel, 0, 4))
+    {
         Serial.printf("[WifiManager] AP Network '%s' Started (CH=%d)\n", prefs.ap_ssid.c_str(), channel);
         Serial.printf("[WifiManager] AP IP: %s\n", WiFi.softAPIP().toString().c_str());
-    } else {
+    }
+    else
+    {
         Serial.println("[WifiManager] ERROR: Failed to start AP network.");
     }
 
     // Auto-connect STA nếu có config đã lưu
-    if (prefs.sta_ssid.length() > 0) {
+    if (prefs.sta_ssid.length() > 0)
+    {
         connectSta(prefs.sta_ssid, prefs.sta_password);
     }
 }
 
-WifiPrefs WifiManager::loadPrefs() {
+WifiPrefs WifiManager::loadPrefs()
+{
     WifiPrefs prefs;
     preferences.begin("wifi", false);
     prefs.ap_ssid = preferences.getString("ap_ssid", "ESP32-Dashboard");
@@ -44,7 +51,8 @@ WifiPrefs WifiManager::loadPrefs() {
     return prefs;
 }
 
-void WifiManager::savePrefs(const WifiPrefs &prefs) {
+void WifiManager::savePrefs(const WifiPrefs &prefs)
+{
     preferences.begin("wifi", false);
     preferences.putString("ap_ssid", prefs.ap_ssid);
     preferences.putString("ap_pass", prefs.ap_password);
@@ -56,7 +64,8 @@ void WifiManager::savePrefs(const WifiPrefs &prefs) {
                   prefs.ap_ssid.c_str(), prefs.sta_ssid.c_str());
 }
 
-void WifiManager::applyApConfig(const WifiPrefs &prefs) {
+void WifiManager::applyApConfig(const WifiPrefs &prefs)
+{
     Serial.println("[WifiManager] Applying new AP config...");
 
     WiFi.softAPdisconnect(true);
@@ -64,14 +73,18 @@ void WifiManager::applyApConfig(const WifiPrefs &prefs) {
 
     const char *pass = prefs.ap_password.length() >= 8 ? prefs.ap_password.c_str() : nullptr;
 
-    if (WiFi.softAP(prefs.ap_ssid.c_str(), pass)) {
+    if (WiFi.softAP(prefs.ap_ssid.c_str(), pass))
+    {
         Serial.printf("[WifiManager] AP restarted: SSID='%s'\n", prefs.ap_ssid.c_str());
-    } else {
+    }
+    else
+    {
         Serial.println("[WifiManager] ERROR: Failed to restart AP!");
     }
 }
 
-void WifiManager::connectSta(const String &ssid, const String &password) {
+void WifiManager::connectSta(const String &ssid, const String &password)
+{
     Serial.printf("[WifiManager] Connecting STA to '%s'...\n", ssid.c_str());
     WiFi.mode(WIFI_AP_STA);
     WiFi.begin(ssid.c_str(), password.c_str());

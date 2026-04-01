@@ -9,14 +9,15 @@ WebManager webManager;
 WifiManager wifiManager;
 ParkingHandler parkingHandler(webManager, wifiManager);
 
-void setup() {
+void setup()
+{
     Serial.begin(115200);
     wifiManager.begin();
     webManager.begin();
     parkingHandler.begin();
 }
 
-void loop() {
+void loop()
+{
     webManager.loop();
 }
-
