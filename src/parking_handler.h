@@ -2,25 +2,23 @@
 
 #include <Arduino.h>
 #include <freertos/queue.h>
+#include <functional>
 #include <pb.h>
 #include <pb_decode.h>
 #include <pb_encode.h>
-#include <functional>
 
 #include "parking.pb.h"
 #include "wifimanager.h"
 
 /// Loại command được đẩy từ async callback vào main loop
-enum class CmdType : uint8_t
-{
+enum class CmdType : uint8_t {
     BINARY_DATA,      // Raw protobuf binary nhận từ WebSocket
     CLIENT_CONNECTED, // Client mới kết nối → gửi DeviceStatus
 };
 
 /// Payload cho command queue
 /// Chứa raw protobuf binary — decode sẽ xảy ra trên main thread
-struct CmdData
-{
+struct CmdData {
     CmdType type;
     uint8_t buffer[Parking_size]; // Copy of raw protobuf data
     size_t len;                   // Actual data length
@@ -33,9 +31,8 @@ struct CmdData
  * thông qua std::function callbacks. Thread safety đảm bảo bởi
  * FreeRTOS queue: async thread enqueue, main loop dequeue + process.
  */
-class ParkingHandler
-{
-public:
+class ParkingHandler {
+  public:
     using SendFn = std::function<void(const uint8_t *, size_t)>;
     using ClientCountFn = std::function<size_t()>;
 
@@ -74,7 +71,7 @@ public:
     /// Vòng lặp để kiểm tra scan async
     void loop();
 
-private:
+  private:
     WifiManager &_wifiManager;
     SendFn _sendBinary;
     ClientCountFn _clientCount;

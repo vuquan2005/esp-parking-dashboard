@@ -3,22 +3,23 @@
 ParkingHandler::ParkingHandler(WifiManager &wifiManager)
     : _wifiManager(wifiManager), _sendBinary(nullptr), _clientCount(nullptr), _cmdQueue(nullptr) {}
 
-void ParkingHandler::begin()
-{
+void ParkingHandler::begin() {
     _cmdQueue = xQueueCreate(CMD_QUEUE_SIZE, sizeof(CmdData));
-    if (!_cmdQueue)
-    {
+    if (!_cmdQueue) {
         Serial.println("[ParkingHandler] ERROR: Failed to create command queue!");
     }
 }
 
-void ParkingHandler::setSendFn(SendFn fn) { _sendBinary = fn; }
-void ParkingHandler::setClientCountFn(ClientCountFn fn) { _clientCount = fn; }
+void ParkingHandler::setSendFn(SendFn fn) {
+    _sendBinary = fn;
+}
+void ParkingHandler::setClientCountFn(ClientCountFn fn) {
+    _clientCount = fn;
+}
 
 // ===== Enqueue (gọi từ async thread — THREAD-SAFE) =====
 
-void ParkingHandler::enqueueBinary(const uint8_t *data, size_t len)
-{
+void ParkingHandler::enqueueBinary(const uint8_t *data, size_t len) {
     if (!_cmdQueue || len > Parking_size)
         return;
 
@@ -27,14 +28,12 @@ void ParkingHandler::enqueueBinary(const uint8_t *data, size_t len)
     cmd.len = len;
     memcpy(cmd.buffer, data, len);
 
-    if (xQueueSend(_cmdQueue, &cmd, 0) != pdTRUE)
-    {
+    if (xQueueSend(_cmdQueue, &cmd, 0) != pdTRUE) {
         Serial.println("[ParkingHandler] WARNING: Command queue full, dropping message");
     }
 }
 
-void ParkingHandler::enqueueClientConnected()
-{
+void ParkingHandler::enqueueClientConnected() {
     if (!_cmdQueue)
         return;
 
@@ -47,16 +46,13 @@ void ParkingHandler::enqueueClientConnected()
 
 // ===== Process Commands (gọi trong main loop) =====
 
-void ParkingHandler::processCommands()
-{
+void ParkingHandler::processCommands() {
     if (!_cmdQueue)
         return;
 
     CmdData cmd;
-    while (xQueueReceive(_cmdQueue, &cmd, 0) == pdTRUE)
-    {
-        switch (cmd.type)
-        {
+    while (xQueueReceive(_cmdQueue, &cmd, 0) == pdTRUE) {
+        switch (cmd.type) {
         case CmdType::BINARY_DATA:
             handleBinaryData(cmd.buffer, cmd.len);
             break;
@@ -69,13 +65,11 @@ void ParkingHandler::processCommands()
 
 // ===== Gửi messages =====
 
-bool ParkingHandler::sendParking(const Parking &msg)
-{
+bool ParkingHandler::sendParking(const Parking &msg) {
     uint8_t buffer[Parking_size];
     pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
 
-    if (!pb_encode(&stream, Parking_fields, &msg))
-    {
+    if (!pb_encode(&stream, Parking_fields, &msg)) {
         Serial.printf("[ParkingHandler] Encode failed: %s\n", PB_GET_ERROR(&stream));
         return false;
     }
@@ -85,10 +79,8 @@ bool ParkingHandler::sendParking(const Parking &msg)
     return true;
 }
 
-void ParkingHandler::sendStatus()
-{
-    if (!_clientCount || _clientCount() == 0)
-    {
+void ParkingHandler::sendStatus() {
+    if (!_clientCount || _clientCount() == 0) {
         // Không có client kết nối -> không gửi status lặp vô ích
         return;
     }
@@ -96,8 +88,7 @@ void ParkingHandler::sendStatus()
     sendDeviceStatus();
 }
 
-void ParkingHandler::sendDeviceStatus()
-{
+void ParkingHandler::sendDeviceStatus() {
     Parking msg = Parking_init_zero;
     msg.which_payload = Parking_wifi_status_tag;
 
@@ -106,8 +97,7 @@ void ParkingHandler::sendDeviceStatus()
     status.wifi_mode = (DeviceStatus_WifiMode)WiFi.getMode();
 
     // STA info
-    if (WiFi.isConnected())
-    {
+    if (WiFi.isConnected()) {
         strncpy(status.sta_ssid, WiFi.SSID().c_str(), sizeof(status.sta_ssid) - 1);
         strncpy(status.sta_ip, WiFi.localIP().toString().c_str(), sizeof(status.sta_ip) - 1);
         status.rssi = WiFi.RSSI();
@@ -124,32 +114,27 @@ void ParkingHandler::sendDeviceStatus()
     status.max_free_block_size = ESP.getMaxAllocHeap();
     status.uptime_seconds = millis() / 1000;
 
-    if (sendParking(msg))
-    {
+    if (sendParking(msg)) {
         Serial.println("Status sent");
     }
 }
 
-void ParkingHandler::sendParkingStatus(const ParkingStatus &status)
-{
+void ParkingHandler::sendParkingStatus(const ParkingStatus &status) {
     Parking msg = Parking_init_zero;
     msg.which_payload = Parking_parking_status_tag;
     msg.payload.parking_status = status;
 
-    if (sendParking(msg))
-    {
+    if (sendParking(msg)) {
         Serial.printf("[ParkingHandler] ParkingStatus sent (%d slots)\n", status.slots_count);
     }
 }
 
-void ParkingHandler::sendParkingEvent(const ParkingEvent &event)
-{
+void ParkingHandler::sendParkingEvent(const ParkingEvent &event) {
     Parking msg = Parking_init_zero;
     msg.which_payload = Parking_parking_event_tag;
     msg.payload.parking_event = event;
 
-    if (sendParking(msg))
-    {
+    if (sendParking(msg)) {
         Serial.printf("[ParkingHandler] ParkingEvent sent (slot=%u, type=%d)\n", event.slot_id,
                       event.event_type);
     }
@@ -157,21 +142,18 @@ void ParkingHandler::sendParkingEvent(const ParkingEvent &event)
 
 // ===== Nhận và decode messages =====
 
-void ParkingHandler::handleBinaryData(const uint8_t *data, size_t len)
-{
+void ParkingHandler::handleBinaryData(const uint8_t *data, size_t len) {
     Parking msg = Parking_init_zero;
     pb_istream_t stream = pb_istream_from_buffer(data, len);
 
-    if (!pb_decode(&stream, Parking_fields, &msg))
-    {
+    if (!pb_decode(&stream, Parking_fields, &msg)) {
         Serial.printf("[ParkingHandler] Decode failed: %s\n", PB_GET_ERROR(&stream));
         return;
     }
 
     Serial.printf("[ParkingHandler] Received payload type: %d\n", (int)msg.which_payload);
 
-    switch (msg.which_payload)
-    {
+    switch (msg.which_payload) {
     case Parking_wifi_scanning_tag:
         handleWifiScanning();
         break;
@@ -190,14 +172,10 @@ void ParkingHandler::handleBinaryData(const uint8_t *data, size_t len)
     }
 }
 
-void ParkingHandler::sendWifiScanResults(int n)
-{
-    if (n < 0)
-    {
+void ParkingHandler::sendWifiScanResults(int n) {
+    if (n < 0) {
         Serial.println("[ParkingHandler] Wifi scan failed, returning empty results");
-    }
-    else if (n == 0)
-    {
+    } else if (n == 0) {
         Serial.println("[ParkingHandler] Wifi scan returned no APs");
     }
 
@@ -208,14 +186,12 @@ void ParkingHandler::sendWifiScanResults(int n)
     int count = (n > 0) ? min(n, 10) : 0;
     results.access_points_count = count;
 
-    for (int i = 0; i < count; i++)
-    {
+    for (int i = 0; i < count; i++) {
         ScanResults_AP &ap = results.access_points[i];
         strncpy(ap.ssid, WiFi.SSID(i).c_str(), sizeof(ap.ssid) - 1);
 
         uint8_t *bssid = WiFi.BSSID(i);
-        if (bssid)
-        {
+        if (bssid) {
             memcpy(ap.bssid, bssid, 6);
         }
 
@@ -226,16 +202,13 @@ void ParkingHandler::sendWifiScanResults(int n)
 
     WiFi.scanDelete();
 
-    if (sendParking(msg))
-    {
+    if (sendParking(msg)) {
         Serial.printf("[ParkingHandler] ScanResults sent (%d APs)\n", count);
     }
 }
 
-void ParkingHandler::handleWifiScanning()
-{
-    if (_scanInProgress)
-    {
+void ParkingHandler::handleWifiScanning() {
+    if (_scanInProgress) {
         Serial.println("[ParkingHandler] WiFi scan already in progress");
         return;
     }
@@ -244,53 +217,43 @@ void ParkingHandler::handleWifiScanning()
 
     int n = WiFi.scanNetworks(true, true); // async, show_hidden
 
-    if (n == WIFI_SCAN_RUNNING)
-    {
+    if (n == WIFI_SCAN_RUNNING) {
         _scanInProgress = true;
         Serial.println("[ParkingHandler] WiFi scan started");
         return;
     }
 
-    if (n == WIFI_SCAN_FAILED)
-    {
+    if (n == WIFI_SCAN_FAILED) {
         Serial.println("[ParkingHandler] WiFi scan failed to start");
         sendWifiScanResults(WIFI_SCAN_FAILED);
         return;
     }
 }
 
-void ParkingHandler::loop()
-{
+void ParkingHandler::loop() {
     unsigned long now = millis();
-    if (now - _lastStatusMillis >= _statusIntervalMs)
-    {
+    if (now - _lastStatusMillis >= _statusIntervalMs) {
         _lastStatusMillis = now;
         sendStatus();
     }
 
-    if (_scanInProgress)
-    {
+    if (_scanInProgress) {
         int n = WiFi.scanComplete();
-        if (n != WIFI_SCAN_RUNNING)
-        {
+        if (n != WIFI_SCAN_RUNNING) {
             _scanInProgress = false;
 
-            if (n == WIFI_SCAN_FAILED)
-            {
+            if (n == WIFI_SCAN_FAILED) {
                 Serial.println("[ParkingHandler] WiFi scan failed (async complete)");
                 WiFi.scanDelete();
                 sendWifiScanResults(WIFI_SCAN_FAILED);
-            }
-            else
-            {
+            } else {
                 sendWifiScanResults(n);
             }
         }
     }
 }
 
-void ParkingHandler::handleWifiConfig(const WifiConfig &config)
-{
+void ParkingHandler::handleWifiConfig(const WifiConfig &config) {
     Serial.printf("[ParkingHandler] WiFi config received - AP: '%s', STA: '%s'\n", config.ap_ssid,
                   config.sta_ssid);
 
@@ -299,10 +262,8 @@ void ParkingHandler::handleWifiConfig(const WifiConfig &config)
     bool apChanged = false;
 
     // Update AP config if provided
-    if (strlen(config.ap_ssid) > 0)
-    {
-        if (prefs.ap_ssid != config.ap_ssid || prefs.ap_password != config.ap_password)
-        {
+    if (strlen(config.ap_ssid) > 0) {
+        if (prefs.ap_ssid != config.ap_ssid || prefs.ap_password != config.ap_password) {
             apChanged = true;
         }
         prefs.ap_ssid = config.ap_ssid;
@@ -310,8 +271,7 @@ void ParkingHandler::handleWifiConfig(const WifiConfig &config)
     }
 
     // Update STA config if provided
-    if (strlen(config.sta_ssid) > 0)
-    {
+    if (strlen(config.sta_ssid) > 0) {
         prefs.sta_ssid = config.sta_ssid;
         prefs.sta_password = config.sta_password;
     }
@@ -320,15 +280,13 @@ void ParkingHandler::handleWifiConfig(const WifiConfig &config)
     _wifiManager.savePrefs(prefs);
 
     // Apply AP changes if needed
-    if (apChanged)
-    {
+    if (apChanged) {
         Serial.println("[ParkingHandler] AP config changed, restarting AP...");
         _wifiManager.applyApConfig(prefs);
     }
 
     // Connect STA if STA SSID provided
-    if (strlen(config.sta_ssid) > 0)
-    {
+    if (strlen(config.sta_ssid) > 0) {
         _wifiManager.connectSta(config.sta_ssid, config.sta_password);
     }
 

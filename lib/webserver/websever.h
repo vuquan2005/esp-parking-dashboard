@@ -13,9 +13,8 @@ using WsBinaryCallback = std::function<void(const uint8_t *, size_t)>;
 /// Callback khi client connect
 using WsConnectCallback = std::function<void()>;
 
-class WebManager
-{
-public:
+class WebManager {
+  public:
     WebManager();
     void begin();
     void loop();
@@ -32,7 +31,7 @@ public:
     /// Trả về số lượng client đang kết nối
     size_t clientCount() const;
 
-private:
+  private:
     AsyncWebServer server;
     AsyncWebSocket ws;
     DNSServer dnsServer;
