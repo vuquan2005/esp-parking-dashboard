@@ -1,0 +1,22 @@
+CompileFlags:
+  Add:
+    - --target=x86_64-linux-gnu
+    - -nostdinc
+    - -isystem/home/vuquan/.platformio/packages/toolchain-xtensa-esp32/xtensa-esp32-elf/include
+    - -isystem/home/vuquan/.platformio/packages/toolchain-xtensa-esp32/lib/gcc/xtensa-esp32-elf/8.4.0/include
+    - -isystem/home/vuquan/.platformio/packages/toolchain-xtensa-esp32/lib/gcc/xtensa-esp32-elf/8.4.0/include-fixed
+    - -Wno-unknown-warning-option
+    - -Wno-unknown-pragmas
+  Remove:
+    - -mlongcalls
+    - -fno-tree-switch-conversion
+    - -fno-jump-tables
+    - -fstrict-volatile-bitfields
+    - -freorder-blocks
+    - -Wno-frame-address
+    - -MMD
+    - -fno-rtti
+Diagnostics:
+  Suppress:
+    - drv_unknown_argument
+    - unknown_warning_option

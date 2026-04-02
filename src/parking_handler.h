@@ -1,28 +1,60 @@
 #pragma once
 
 #include <Arduino.h>
+#include <freertos/queue.h>
+#include <functional>
 #include <pb.h>
 #include <pb_decode.h>
 #include <pb_encode.h>
 
 #include "parking.pb.h"
-#include "websever.h"
 #include "wifimanager.h"
 
-/**
- * ParkingHandler - Xử lý encode/decode protobuf qua WebSocket
- *
- * File này nằm trong src/ (không phải lib/) vì parking.pb.h được
- * nanopb generate trong quá trình build, và lib có thể biên dịch
- * trước khi file này tồn tại.
- */
-class ParkingHandler
-{
-public:
-    ParkingHandler(WebManager &webManager, WifiManager &wifiManager);
+/// Loại command được đẩy từ async callback vào main loop
+enum class CmdType : uint8_t {
+    BINARY_DATA,      // Raw protobuf binary nhận từ WebSocket
+    CLIENT_CONNECTED, // Client mới kết nối → gửi DeviceStatus
+};
 
-    /// Đăng ký WebSocket event handler vào WebManager
+/// Payload cho command queue
+/// Chứa raw protobuf binary — decode sẽ xảy ra trên main thread
+struct CmdData {
+    CmdType type;
+    uint8_t buffer[Parking_size]; // Copy of raw protobuf data
+    size_t len;                   // Actual data length
+};
+
+/**
+ * ParkingHandler - Xử lý encode/decode protobuf
+ *
+ * KHÔNG phụ thuộc vào ESPAsyncWebServer — chỉ nhận/gửi raw binary
+ * thông qua std::function callbacks. Thread safety đảm bảo bởi
+ * FreeRTOS queue: async thread enqueue, main loop dequeue + process.
+ */
+class ParkingHandler {
+  public:
+    using SendFn = std::function<void(const uint8_t *, size_t)>;
+    using ClientCountFn = std::function<size_t()>;
+
+    ParkingHandler(WifiManager &wifiManager);
+
+    /// Khởi tạo command queue
     void begin();
+
+    /// Thiết lập hàm gửi binary (gọi trước begin)
+    void setSendFn(SendFn fn);
+
+    /// Thiết lập hàm đếm client (gọi trước begin)
+    void setClientCountFn(ClientCountFn fn);
+
+    /// Enqueue raw binary data từ async thread (THREAD-SAFE)
+    void enqueueBinary(const uint8_t *data, size_t len);
+
+    /// Enqueue client connected event từ async thread (THREAD-SAFE)
+    void enqueueClientConnected();
+
+    /// Xử lý command queue — GỌI TRONG MAIN LOOP
+    void processCommands();
 
     /// Gửi DeviceStatus cho tất cả client
     void sendDeviceStatus();
@@ -39,28 +71,28 @@ public:
     /// Vòng lặp để kiểm tra scan async
     void loop();
 
-private:
-    WebManager &_webManager;
+  private:
     WifiManager &_wifiManager;
+    SendFn _sendBinary;
+    ClientCountFn _clientCount;
+
+    QueueHandle_t _cmdQueue;
+    static constexpr size_t CMD_QUEUE_SIZE = 2;
 
     bool _scanInProgress = false;
     unsigned long _lastStatusMillis = 0;
     static constexpr unsigned long _statusIntervalMs = 10UL * 1000UL; // 10 giây
 
-    /// Encode và gửi message Parking qua WebSocket
+    /// Encode và gửi message Parking qua callback
     bool sendParking(const Parking &msg);
 
     /// Xử lý kết quả scan WiFi async
     void sendWifiScanResults(int count);
 
-    /// Xử lý binary data nhận từ WebSocket
-    void handleBinaryData(AsyncWebSocketClient *client, uint8_t *data, size_t len);
+    /// Xử lý binary data (chạy trên main thread)
+    void handleBinaryData(const uint8_t *data, size_t len);
 
     /// Xử lý từng loại payload
-    void handleWifiScanning(AsyncWebSocketClient *client);
-    void handleWifiConfig(AsyncWebSocketClient *client, const WifiConfig &config);
-
-    /// WebSocket event callback
-    void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
-                   void *arg, uint8_t *data, size_t len);
+    void handleWifiScanning();
+    void handleWifiConfig(const WifiConfig &config);
 };
