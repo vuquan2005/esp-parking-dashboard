@@ -3,6 +3,8 @@
 #include "websever.h"
 #include "wifimanager.h"
 
+SET_LOOP_TASK_STACK_SIZE(16384);
+
 // Global Instances
 WebManager webManager;
 WifiManager wifiManager;
