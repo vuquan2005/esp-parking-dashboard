@@ -3,7 +3,9 @@
 
 const byte DNS_PORT = 53;
 
-WebManager::WebManager() : server(80), ws("/ws"), serverStarted(false), wsCallback(nullptr) {}
+WebManager::WebManager()
+    : server(80), ws("/ws"), serverStarted(false), onBinaryCallback(nullptr),
+      onConnectCallback(nullptr) {}
 
 void WebManager::begin()
 {
@@ -44,7 +46,8 @@ void WebManager::loop()
     ws.cleanupClients();
 }
 
-void WebManager::setWsEventCallback(WsEventCallback callback) { wsCallback = callback; }
+void WebManager::setOnBinary(WsBinaryCallback callback) { onBinaryCallback = callback; }
+void WebManager::setOnConnect(WsConnectCallback callback) { onConnectCallback = callback; }
 
 void WebManager::sendBinary(const uint8_t *data, size_t len) { ws.binaryAll(data, len); }
 
@@ -53,10 +56,35 @@ size_t WebManager::clientCount() const { return ws.count(); }
 void WebManager::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
                            void *arg, uint8_t *data, size_t len)
 {
-    Serial.printf("[WebManager] WebSocket event: %d, Client ID: %u\n", (int)type, client->id());
-    // Chuyển tiếp event cho callback đã đăng ký (ParkingHandler trong src/)
-    if (wsCallback)
+    switch (type)
     {
-        wsCallback(server, client, type, arg, data, len);
+    case WS_EVT_CONNECT:
+        Serial.printf("[WebManager] Client #%u connected from %s\n", client->id(),
+                      client->remoteIP().toString().c_str());
+        if (onConnectCallback)
+            onConnectCallback();
+        break;
+
+    case WS_EVT_DISCONNECT:
+        Serial.printf("[WebManager] Client #%u disconnected\n", client->id());
+        break;
+
+    case WS_EVT_DATA:
+    {
+        AwsFrameInfo *info = (AwsFrameInfo *)arg;
+        if (info->opcode == WS_BINARY && info->final && info->index == 0 && info->len == len)
+        {
+            if (onBinaryCallback)
+                onBinaryCallback(data, len);
+        }
+        break;
+    }
+
+    case WS_EVT_ERROR:
+        Serial.printf("[WebManager] Client #%u error\n", client->id());
+        break;
+
+    case WS_EVT_PONG:
+        break;
     }
 }

@@ -30,10 +30,10 @@ void WifiManager::begin()
     }
 
     // Auto-connect STA nếu có config đã lưu
-    if (prefs.sta_ssid.length() > 0)
-    {
-        connectSta(prefs.sta_ssid, prefs.sta_password);
-    }
+    // if (prefs.sta_ssid.length() > 0)
+    // {
+    //     connectSta(prefs.sta_ssid, prefs.sta_password);
+    // }
 }
 
 WifiPrefs WifiManager::loadPrefs()
@@ -85,7 +85,7 @@ void WifiManager::applyApConfig(const WifiPrefs &prefs)
 
 void WifiManager::connectSta(const String &ssid, const String &password)
 {
-    Serial.printf("[WifiManager] Connecting STA to '%s'...\n", ssid.c_str());
-    WiFi.mode(WIFI_AP_STA);
-    WiFi.begin(ssid.c_str(), password.c_str());
+    // Serial.printf("[WifiManager] Connecting STA to '%s'...\n", ssid.c_str());
+    // WiFi.mode(WIFI_AP_STA);
+    // WiFi.begin(ssid.c_str(), password.c_str());
 }

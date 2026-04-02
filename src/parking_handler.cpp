@@ -1,14 +1,70 @@
 #include "parking_handler.h"
 
-ParkingHandler::ParkingHandler(WebManager &webManager, WifiManager &wifiManager)
-    : _webManager(webManager), _wifiManager(wifiManager) {}
+ParkingHandler::ParkingHandler(WifiManager &wifiManager)
+    : _wifiManager(wifiManager), _sendBinary(nullptr), _clientCount(nullptr), _cmdQueue(nullptr) {}
 
 void ParkingHandler::begin()
 {
-    _webManager.setWsEventCallback(
-        [this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg,
-               uint8_t *data, size_t len)
-        { this->onWsEvent(server, client, type, arg, data, len); });
+    _cmdQueue = xQueueCreate(CMD_QUEUE_SIZE, sizeof(CmdData));
+    if (!_cmdQueue)
+    {
+        Serial.println("[ParkingHandler] ERROR: Failed to create command queue!");
+    }
+}
+
+void ParkingHandler::setSendFn(SendFn fn) { _sendBinary = fn; }
+void ParkingHandler::setClientCountFn(ClientCountFn fn) { _clientCount = fn; }
+
+// ===== Enqueue (gọi từ async thread — THREAD-SAFE) =====
+
+void ParkingHandler::enqueueBinary(const uint8_t *data, size_t len)
+{
+    if (!_cmdQueue || len > Parking_size)
+        return;
+
+    CmdData cmd;
+    cmd.type = CmdType::BINARY_DATA;
+    cmd.len = len;
+    memcpy(cmd.buffer, data, len);
+
+    if (xQueueSend(_cmdQueue, &cmd, 0) != pdTRUE)
+    {
+        Serial.println("[ParkingHandler] WARNING: Command queue full, dropping message");
+    }
+}
+
+void ParkingHandler::enqueueClientConnected()
+{
+    if (!_cmdQueue)
+        return;
+
+    CmdData cmd;
+    cmd.type = CmdType::CLIENT_CONNECTED;
+    cmd.len = 0;
+
+    xQueueSend(_cmdQueue, &cmd, 0);
+}
+
+// ===== Process Commands (gọi trong main loop) =====
+
+void ParkingHandler::processCommands()
+{
+    if (!_cmdQueue)
+        return;
+
+    CmdData cmd;
+    while (xQueueReceive(_cmdQueue, &cmd, 0) == pdTRUE)
+    {
+        switch (cmd.type)
+        {
+        case CmdType::BINARY_DATA:
+            handleBinaryData(cmd.buffer, cmd.len);
+            break;
+        case CmdType::CLIENT_CONNECTED:
+            sendDeviceStatus();
+            break;
+        }
+    }
 }
 
 // ===== Gửi messages =====
@@ -24,13 +80,14 @@ bool ParkingHandler::sendParking(const Parking &msg)
         return false;
     }
 
-    _webManager.sendBinary(buffer, stream.bytes_written);
+    if (_sendBinary)
+        _sendBinary(buffer, stream.bytes_written);
     return true;
 }
 
 void ParkingHandler::sendStatus()
 {
-    if (_webManager.clientCount() == 0)
+    if (!_clientCount || _clientCount() == 0)
     {
         // Không có client kết nối -> không gửi status lặp vô ích
         return;
@@ -100,7 +157,7 @@ void ParkingHandler::sendParkingEvent(const ParkingEvent &event)
 
 // ===== Nhận và decode messages =====
 
-void ParkingHandler::handleBinaryData(AsyncWebSocketClient *client, uint8_t *data, size_t len)
+void ParkingHandler::handleBinaryData(const uint8_t *data, size_t len)
 {
     Parking msg = Parking_init_zero;
     pb_istream_t stream = pb_istream_from_buffer(data, len);
@@ -116,11 +173,11 @@ void ParkingHandler::handleBinaryData(AsyncWebSocketClient *client, uint8_t *dat
     switch (msg.which_payload)
     {
     case Parking_wifi_scanning_tag:
-        handleWifiScanning(client);
+        handleWifiScanning();
         break;
 
     case Parking_wifi_config_tag:
-        handleWifiConfig(client, msg.payload.wifi_config);
+        handleWifiConfig(msg.payload.wifi_config);
         break;
 
     case Parking_wifi_status_tag:
@@ -175,10 +232,8 @@ void ParkingHandler::sendWifiScanResults(int n)
     }
 }
 
-void ParkingHandler::handleWifiScanning(AsyncWebSocketClient *client)
+void ParkingHandler::handleWifiScanning()
 {
-    (void)client;
-
     if (_scanInProgress)
     {
         Serial.println("[ParkingHandler] WiFi scan already in progress");
@@ -234,8 +289,7 @@ void ParkingHandler::loop()
     }
 }
 
-void ParkingHandler::handleWifiConfig(AsyncWebSocketClient *client,
-                                      const WifiConfig &config)
+void ParkingHandler::handleWifiConfig(const WifiConfig &config)
 {
     Serial.printf("[ParkingHandler] WiFi config received - AP: '%s', STA: '%s'\n", config.ap_ssid,
                   config.sta_ssid);
@@ -279,43 +333,4 @@ void ParkingHandler::handleWifiConfig(AsyncWebSocketClient *client,
     }
 
     sendDeviceStatus();
-}
-
-// ===== WebSocket Event Handler =====
-
-void ParkingHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
-                               AwsEventType type, void *arg, uint8_t *data, size_t len)
-{
-    Serial.printf("[ParkingHandler] WebSocket event: %d, Client ID: %u\n", (int)type, client->id());
-    switch (type)
-    {
-    case WS_EVT_CONNECT:
-        Serial.printf("[ParkingHandler] Client #%u connected from %s\n", client->id(),
-                      client->remoteIP().toString().c_str());
-        // Gửi device status cho client mới kết nối
-        sendDeviceStatus();
-        break;
-
-    case WS_EVT_DISCONNECT:
-        Serial.printf("[ParkingHandler] Client #%u disconnected\n", client->id());
-        break;
-
-    case WS_EVT_DATA:
-    {
-        AwsFrameInfo *info = (AwsFrameInfo *)arg;
-        if (info->opcode == WS_BINARY && info->final && info->index == 0 && info->len == len)
-        {
-            // Complete binary frame
-            handleBinaryData(client, data, len);
-        }
-        break;
-    }
-
-    case WS_EVT_ERROR:
-        Serial.printf("[ParkingHandler] Client #%u error\n", client->id());
-        break;
-
-    case WS_EVT_PONG:
-        break;
-    }
 }
