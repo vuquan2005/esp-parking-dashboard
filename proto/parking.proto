@@ -11,6 +11,40 @@ message Parking {
   }
 }
 
+message ParkingStatus {
+  repeated SlotStatus slots = 1; // max_count: 15 (nanopb)
+  repeated bytes      rfid  = 2; // RFID per pallet, index = pallet_id - 1, max_count: 15 (nanopb), max_size: 10 (nanopb)
+}
+
+message SlotStatus {
+  Status status    = 1;
+  uint32 pallet_id = 2;
+
+  enum Status {
+    UNKNOWN    = 0;
+    NO_PALLET  = 1;
+    EMPTY      = 2;
+    OCCUPIED   = 3;
+    PROCESSING = 4;
+    PENDING    = 5;
+  }
+}
+
+message ParkingEvent {
+  uint32       event_id     = 1;
+  uint32       slot_id      = 2;
+  uint64       timestamp    = 3; // Unix epoch time in milliseconds
+  EventType    event_type   = 4;
+  bytes        rfid         = 5;
+  bool         is_done      = 6;
+
+  enum EventType {
+    UNKNOWN = 0;
+    IN      = 1;
+    OUT     = 2;
+  }
+}
+
 message WifiScanning {
 }
 
@@ -81,56 +115,4 @@ message WifiConfig {
   string sta_password = 2; // max_size: 64 (nanopb)
   string ap_ssid      = 3; // max_size: 32 (nanopb)
   string ap_password  = 4; // max_size: 64 (nanopb)
-}
-
-message ParkingStatus {
-  repeated SlotStatus slots = 1; // max_count: 15 (nanopb)
-}
-
-message SlotStatus {
-  uint32         slot_id = 1;
-  Status         status  = 2;
-  repeated bytes rfid    = 3; // raw RFID tag bytes (10 bytes each), max_count: 15 (nanopb)
-  uint32         pallet_id = 4;
-
-  enum Status {
-    UNKNOWN    = 0;
-    NO_PALLET  = 1;
-    EMPTY      = 2;
-    OCCUPIED   = 3;
-    PROCESSING = 4;
-    PENDING    = 5;
-  }
-
-}
-
-message ParkingEvent {
-  uint32       event_id     = 1;
-  uint32       slot_id      = 2;
-  uint64       timestamp    = 3; // Unix epoch time in milliseconds
-  EventType    event_type   = 4;
-  bytes        rfid         = 5;
-  uint32       step         = 6; // (process%) 1, 2, 3, 4, 5,...
-  uint32       total_steps  = 7;
-  ParkingSteps current_step = 8;
-
-  enum EventType {
-    UNKNOWN = 0;
-    IN      = 1;
-    OUT     = 2;
-  }
-}
-
-message ParkingSteps {
-  uint32 step_id = 1;
-  Task   task    = 2;
-
-  enum Task {
-    UNKNOWN    = 0;
-    MOVE_UP    = 1;
-    MOVE_DOWN  = 2;
-    MOVE_LEFT  = 3;
-    MOVE_RIGHT = 4;
-    PICK_UP    = 5;
-  }
 }

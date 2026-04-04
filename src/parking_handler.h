@@ -65,8 +65,17 @@ class ParkingHandler {
     /// Gửi ParkingStatus cho tất cả client
     void sendParkingStatus(const ParkingStatus &status);
 
+    /// Tạo và gửi ParkingStatus từ mảng SlotStatus
+    void sendParkingStatus(const SlotStatus *slots_array, size_t slots_count,
+                           const uint8_t (*rfid)[10] = nullptr, size_t rfid_count = 0);
+
     /// Gửi ParkingEvent cho tất cả client
     void sendParkingEvent(const ParkingEvent &event);
+
+    /// Tạo và gửi ParkingEvent với các tham số rời rạc
+    void sendParkingEvent(uint32_t event_id, uint32_t slot_id, uint64_t timestamp,
+                          ParkingEvent_EventType event_type, const uint8_t *rfid = nullptr,
+                          bool is_done = false);
 
     /// Vòng lặp để kiểm tra scan async
     void loop();

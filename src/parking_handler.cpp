@@ -129,6 +129,24 @@ void ParkingHandler::sendParkingStatus(const ParkingStatus &status) {
     }
 }
 
+void ParkingHandler::sendParkingStatus(const SlotStatus *slots_array, size_t slots_count,
+                                       const uint8_t (*rfid)[10], size_t rfid_count) {
+    ParkingStatus status = ParkingStatus_init_zero;
+    status.slots_count = (slots_count > 15) ? 15 : slots_count;
+    for (size_t i = 0; i < status.slots_count; i++) {
+        status.slots[i] = slots_array[i];
+    }
+
+    if (rfid && rfid_count > 0) {
+        status.rfid_count = (rfid_count > 15) ? 15 : rfid_count;
+        for (size_t i = 0; i < status.rfid_count; i++) {
+            memcpy(status.rfid[i], rfid[i], sizeof(status.rfid[i]));
+        }
+    }
+
+    sendParkingStatus(status);
+}
+
 void ParkingHandler::sendParkingEvent(const ParkingEvent &event) {
     Parking msg = Parking_init_zero;
     msg.which_payload = Parking_parking_event_tag;
@@ -138,6 +156,23 @@ void ParkingHandler::sendParkingEvent(const ParkingEvent &event) {
         Serial.printf("[ParkingHandler] ParkingEvent sent (slot=%u, type=%d)\n", event.slot_id,
                       event.event_type);
     }
+}
+
+void ParkingHandler::sendParkingEvent(uint32_t event_id, uint32_t slot_id, uint64_t timestamp,
+                                      ParkingEvent_EventType event_type, const uint8_t *rfid,
+                                      bool is_done) {
+    ParkingEvent event = ParkingEvent_init_zero;
+    event.event_id = event_id;
+    event.slot_id = slot_id;
+    event.timestamp = timestamp;
+    event.event_type = event_type;
+    event.is_done = is_done;
+
+    if (rfid) {
+        memcpy(event.rfid, rfid, sizeof(event.rfid));
+    }
+
+    sendParkingEvent(event);
 }
 
 // ===== Nhận và decode messages =====

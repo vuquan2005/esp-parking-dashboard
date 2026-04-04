@@ -5,5 +5,7 @@
         ".clangd": ".clang-format, compile_commands.json",
         "README.md": "CHANGELOG.md, LICENSE, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SUPPORT.md",
         ".gitignore": ".gitkeep, .gitmodules, .gitattributes"
-    }
+    },
+    "protobuf.protoc.path": "/usr/bin/protoc"
 }
+
