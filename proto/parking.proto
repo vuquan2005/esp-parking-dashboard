@@ -12,13 +12,14 @@ message Parking {
 }
 
 message ParkingStatus {
-  repeated SlotStatus slots = 1; // max_count: 15 (nanopb)
-  repeated bytes      rfid  = 2; // RFID per pallet, index = pallet_id - 1, max_count: 15 (nanopb), max_size: 10 (nanopb)
-}
-
-message SlotStatus {
-  Status status    = 1;
-  uint32 pallet_id = 2;
+  // Grid layout: maps slot_id - 1 to pallet_id (0 if no pallet)
+  repeated uint32 pallet_grid = 1; // max_count: 12 (nanopb)
+  
+  // Status per slot: maps slot_id - 1 to slot status
+  repeated Status slots       = 2; // max_count: 10 (nanopb)
+  
+  // RFID data: maps pallet_id - 1 to RFID tag
+  repeated bytes  rfid        = 3; // RFID per pallet, index = pallet_id - 1, max_count: 10 (nanopb), max_size: 16 (nanopb)
 
   enum Status {
     UNKNOWN    = 0;
@@ -29,6 +30,7 @@ message SlotStatus {
     PENDING    = 5;
   }
 }
+
 
 message ParkingEvent {
   uint32       event_id     = 1;

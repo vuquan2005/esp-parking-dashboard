@@ -20,7 +20,7 @@ void ParkingHandler::setClientCountFn(ClientCountFn fn) {
 // ===== Enqueue (gọi từ async thread — THREAD-SAFE) =====
 
 void ParkingHandler::enqueueBinary(const uint8_t *data, size_t len) {
-    if (!_cmdQueue || len > Parking_size)
+    if (!_cmdQueue || len > PARKING_PB_H_MAX_SIZE)
         return;
 
     CmdData cmd;
@@ -66,7 +66,7 @@ void ParkingHandler::processCommands() {
 // ===== Gửi messages =====
 
 bool ParkingHandler::sendParking(const Parking &msg) {
-    uint8_t buffer[Parking_size];
+    uint8_t buffer[PARKING_PB_H_MAX_SIZE];
     pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
 
     if (!pb_encode(&stream, Parking_fields, &msg)) {
@@ -129,16 +129,24 @@ void ParkingHandler::sendParkingStatus(const ParkingStatus &status) {
     }
 }
 
-void ParkingHandler::sendParkingStatus(const SlotStatus *slots_array, size_t slots_count,
+void ParkingHandler::sendParkingStatus(const ParkingStatus_Status *slots_array, size_t slots_count,
+                                       const uint32_t *pallet_grid, size_t pallet_grid_count,
                                        const uint8_t (*rfid)[10], size_t rfid_count) {
     ParkingStatus status = ParkingStatus_init_zero;
-    status.slots_count = (slots_count > 15) ? 15 : slots_count;
+    status.slots_count = (slots_count > 10) ? 10 : slots_count;
     for (size_t i = 0; i < status.slots_count; i++) {
         status.slots[i] = slots_array[i];
     }
 
+    if (pallet_grid && pallet_grid_count > 0) {
+        status.pallet_grid_count = (pallet_grid_count > 12) ? 12 : pallet_grid_count;
+        for (size_t i = 0; i < status.pallet_grid_count; i++) {
+            status.pallet_grid[i] = pallet_grid[i];
+        }
+    }
+
     if (rfid && rfid_count > 0) {
-        status.rfid_count = (rfid_count > 15) ? 15 : rfid_count;
+        status.rfid_count = (rfid_count > 10) ? 10 : rfid_count;
         for (size_t i = 0; i < status.rfid_count; i++) {
             memcpy(status.rfid[i], rfid[i], sizeof(status.rfid[i]));
         }

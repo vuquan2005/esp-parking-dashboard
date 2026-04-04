@@ -20,8 +20,9 @@ WifiConfig.ap_ssid                    max_size:33
 WifiConfig.ap_password                max_size:65
 
 # ParkingStatus
-ParkingStatus.slots                   max_count:15
-ParkingStatus.rfid                    max_count:15, max_size:10, fixed_length:true
+ParkingStatus.pallet_grid             max_count:12
+ParkingStatus.slots                   max_count:10
+ParkingStatus.rfid                    max_count:10, max_size:16, fixed_length:true
 
 # ParkingEvent
 ParkingEvent.rfid                     max_size:10, fixed_length:true

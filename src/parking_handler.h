@@ -10,6 +10,10 @@
 #include "parking.pb.h"
 #include "wifimanager.h"
 
+#ifndef PARKING_PB_H_MAX_SIZE
+#define PARKING_PB_H_MAX_SIZE 1024
+#endif
+
 /// Loại command được đẩy từ async callback vào main loop
 enum class CmdType : uint8_t {
     BINARY_DATA,      // Raw protobuf binary nhận từ WebSocket
@@ -20,8 +24,8 @@ enum class CmdType : uint8_t {
 /// Chứa raw protobuf binary — decode sẽ xảy ra trên main thread
 struct CmdData {
     CmdType type;
-    uint8_t buffer[Parking_size]; // Copy of raw protobuf data
-    size_t len;                   // Actual data length
+    uint8_t buffer[PARKING_PB_H_MAX_SIZE]; // Copy of raw protobuf data
+    size_t len;                            // Actual data length
 };
 
 /**
@@ -65,8 +69,9 @@ class ParkingHandler {
     /// Gửi ParkingStatus cho tất cả client
     void sendParkingStatus(const ParkingStatus &status);
 
-    /// Tạo và gửi ParkingStatus từ mảng SlotStatus
-    void sendParkingStatus(const SlotStatus *slots_array, size_t slots_count,
+    /// Tạo và gửi ParkingStatus từ mảng ParkingStatus_Status
+    void sendParkingStatus(const ParkingStatus_Status *slots_array, size_t slots_count,
+                           const uint32_t *pallet_grid = nullptr, size_t pallet_grid_count = 0,
                            const uint8_t (*rfid)[10] = nullptr, size_t rfid_count = 0);
 
     /// Gửi ParkingEvent cho tất cả client
