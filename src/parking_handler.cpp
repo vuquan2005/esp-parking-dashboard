@@ -129,19 +129,22 @@ void ParkingHandler::sendParkingStatus(const ParkingStatus &status) {
     }
 }
 
-void ParkingHandler::sendParkingStatus(const ParkingStatus_Status *slots_array, size_t slots_count,
-                                       const uint32_t *pallet_grid, size_t pallet_grid_count,
-                                       const uint8_t (*rfid)[10], size_t rfid_count) {
+void ParkingHandler::sendParkingStatus(const uint32_t *pallet_grid, size_t pallet_grid_count,
+                                       const ParkingStatus_Status *slots_array, size_t slots_count,
+                                       const uint8_t (*rfid)[16], size_t rfid_count) {
     ParkingStatus status = ParkingStatus_init_zero;
-    status.slots_count = (slots_count > 10) ? 10 : slots_count;
-    for (size_t i = 0; i < status.slots_count; i++) {
-        status.slots[i] = slots_array[i];
-    }
 
     if (pallet_grid && pallet_grid_count > 0) {
         status.pallet_grid_count = (pallet_grid_count > 12) ? 12 : pallet_grid_count;
         for (size_t i = 0; i < status.pallet_grid_count; i++) {
             status.pallet_grid[i] = pallet_grid[i];
+        }
+    }
+
+    if (slots_array && slots_count > 0) {
+        status.slots_count = (slots_count > 10) ? 10 : slots_count;
+        for (size_t i = 0; i < status.slots_count; i++) {
+            status.slots[i] = slots_array[i];
         }
     }
 
