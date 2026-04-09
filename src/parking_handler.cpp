@@ -131,9 +131,20 @@ void ParkingHandler::sendParkingStatus(const ParkingStatus &status) {
 
 void ParkingHandler::sendParkingStatus(const uint32_t *pallet_grid, size_t pallet_grid_count,
                                        const ParkingStatus_Status *slots_array, size_t slots_count,
-                                       const uint8_t (*rfid)[16], size_t rfid_count) {
+                                       const uint8_t (*rfid)[10], size_t rfid_count) {
     ParkingStatus status = ParkingStatus_init_zero;
 
+    // Mảng 1 chiều lưu trữ id của pallet (pallet_id) tại các vị trí row, col
+    /*
+    Ví dụ: rows = 3, cols = 4
+    grid[0] = pallet_id tại vị trí (0, 0)
+    grid[1] = pallet_id tại vị trí (0, 1)
+    grid[2] = pallet_id tại vị trí (0, 2)
+    grid[3] = pallet_id tại vị trí (0, 3)
+    grid[4] = pallet_id tại vị trí (1, 0)
+    ...
+    grid[11] = pallet_id tại vị trí (2, 3)
+    */
     if (pallet_grid && pallet_grid_count > 0) {
         status.pallet_grid_count = (pallet_grid_count > 12) ? 12 : pallet_grid_count;
         for (size_t i = 0; i < status.pallet_grid_count; i++) {
@@ -141,6 +152,7 @@ void ParkingHandler::sendParkingStatus(const uint32_t *pallet_grid, size_t palle
         }
     }
 
+    // dùng cách nào đó ép kiểu sang ParkingStatus_Status (có thể đổi tham số, định nghĩa hàm để phù hợp)
     if (slots_array && slots_count > 0) {
         status.slots_count = (slots_count > 10) ? 10 : slots_count;
         for (size_t i = 0; i < status.slots_count; i++) {
@@ -148,6 +160,7 @@ void ParkingHandler::sendParkingStatus(const uint32_t *pallet_grid, size_t palle
         }
     }
 
+    // tạm bỏ qua
     if (rfid && rfid_count > 0) {
         status.rfid_count = (rfid_count > 10) ? 10 : rfid_count;
         for (size_t i = 0; i < status.rfid_count; i++) {
