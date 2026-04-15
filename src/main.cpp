@@ -5,6 +5,7 @@
 #include "parking_handler.h"
 #include "websever.h"
 #include "wifimanager.h"
+#include <time.h>
 
 SET_LOOP_TASK_STACK_SIZE(16384);
 
@@ -12,6 +13,10 @@ SET_LOOP_TASK_STACK_SIZE(16384);
 WebManager webManager;
 WifiManager wifiManager;
 ParkingHandler parkingHandler(wifiManager);
+
+void sendCurrentParkingStatus();
+void sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type,
+                             bool is_done = false);
 
 // ==========================================
 // 1. CẤU HÌNH CHÂN (HARDWARE)
@@ -337,6 +342,7 @@ void lay_xe(int idx) {
     }
     ds_o[idx].ma_the_uid = "";
     sendCurrentParkingStatus();
+    sendCurrentParkingEvent(idx + 1, ParkingEvent_EventType_OUT, true);
     beep(2);
 }
 
@@ -397,6 +403,7 @@ void gui_xe(String uid) {
             gui_lenh(String(t) + String(c) + "KD");
         }
         sendCurrentParkingStatus();
+        sendCurrentParkingEvent(target + 1, ParkingEvent_EventType_IN, true);
         beep(1);
     } else {
         Serial.println("BAI DAY!");
@@ -470,6 +477,22 @@ void sendCurrentParkingStatus() {
     }
 
     parkingHandler.sendParkingStatus(pallet_grid, kSlotCount, slots, kSlotCount);
+}
+
+// increment event_id_counter when lay_xe() or gui_xe() is called
+uint32_t event_id_counter = 1;
+
+void sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type, bool is_done) {
+    struct timespec ts;
+    uint64_t timestamp_ms = 0;
+
+    if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
+        timestamp_ms = ((uint64_t)ts.tv_sec * 1000ULL) + ((uint64_t)ts.tv_nsec / 1000000ULL);
+        parkingHandler.sendParkingEvent(event_id_counter++, slot_id, timestamp_ms, event_type,
+                                        is_done);
+    } else {
+        Serial.println("Failed to get current time");
+    }
 }
 
 void loop() {
