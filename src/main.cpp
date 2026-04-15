@@ -134,20 +134,6 @@ void gui_lenh(String cmd) {
     Serial.println("[TX -> ACTION]: " + cmd);
 }
 
-void sendCurrentParkingStatus() {
-    static const size_t kSlotCount = 10;
-    uint32_t pallet_grid[kSlotCount] = {0};
-    ParkingStatus_Status slots[kSlotCount];
-
-    for (size_t i = 0; i < kSlotCount; ++i) {
-        bool occupied = (ds_o[i].ma_the_uid.length() > 0);
-        pallet_grid[i] = 0; // Ignore RFID/pallet IDs for now
-        slots[i] = occupied ? ParkingStatus_Status_OCCUPIED : ParkingStatus_Status_EMPTY;
-    }
-
-    parkingHandler.sendParkingStatus(pallet_grid, kSlotCount, slots, kSlotCount);
-}
-
 /**
  * @function doc_sensor_uart - Đọc dữ liệu cảm biến từ UART
  * Nhận lệnh từ bộ điều khiển motor về trạng thái công tắc hành trình
@@ -471,6 +457,19 @@ void setup() {
 
     Serial.println("\n--- MASTER READY (VET CAN MODE) ---");
     beep(1);
+}
+
+void sendCurrentParkingStatus() {
+    static const size_t kSlotCount = 10;
+    uint32_t pallet_grid[kSlotCount] = {0};
+    ParkingStatus_Status slots[kSlotCount];
+
+    for (size_t i = 0; i < kSlotCount; ++i) {
+        bool occupied = (ds_o[i].ma_the_uid.length() > 0);
+        slots[i] = occupied ? ParkingStatus_Status_OCCUPIED : ParkingStatus_Status_EMPTY;
+    }
+
+    parkingHandler.sendParkingStatus(pallet_grid, kSlotCount, slots, kSlotCount);
 }
 
 void loop() {
