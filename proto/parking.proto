@@ -18,9 +18,6 @@ message ParkingStatus {
   // Status per pallet: maps pallet_id - 1 to pallet status
   repeated Status slots       = 2; // max_count: 10 (nanopb)
 
-  // RFID data: maps pallet_id - 1 to RFID tag
-  repeated bytes  rfid        = 3; // RFID per pallet, index = pallet_id - 1, max_count: 10 (nanopb), max_size: 16 (nanopb)
-
   enum Status {
     UNKNOWN    = 0;
     EMPTY      = 1;
@@ -36,7 +33,6 @@ message ParkingEvent {
   uint32       slot_id      = 2;
   uint64       timestamp    = 3; // Unix epoch time in milliseconds
   EventType    event_type   = 4;
-  bytes        rfid         = 5;
   bool         is_done      = 6;
 
   enum EventType {

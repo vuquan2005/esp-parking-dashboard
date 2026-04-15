@@ -130,10 +130,21 @@ void ParkingHandler::sendParkingStatus(const ParkingStatus &status) {
 }
 
 void ParkingHandler::sendParkingStatus(const uint32_t *pallet_grid, size_t pallet_grid_count,
-                                       const ParkingStatus_Status *slots_array, size_t slots_count,
-                                       const uint8_t (*rfid)[16], size_t rfid_count) {
+                                       const ParkingStatus_Status *slots_array,
+                                       size_t slots_count) {
     ParkingStatus status = ParkingStatus_init_zero;
 
+    // Mảng 1 chiều lưu trữ id của pallet (pallet_id) tại các vị trí row, col
+    /*
+    Ví dụ: rows = 3, cols = 4
+    grid[0] = pallet_id tại vị trí (0, 0)
+    grid[1] = pallet_id tại vị trí (0, 1)
+    grid[2] = pallet_id tại vị trí (0, 2)
+    grid[3] = pallet_id tại vị trí (0, 3)
+    grid[4] = pallet_id tại vị trí (1, 0)
+    ...
+    grid[11] = pallet_id tại vị trí (2, 3)
+    */
     if (pallet_grid && pallet_grid_count > 0) {
         status.pallet_grid_count = (pallet_grid_count > 12) ? 12 : pallet_grid_count;
         for (size_t i = 0; i < status.pallet_grid_count; i++) {
@@ -145,13 +156,6 @@ void ParkingHandler::sendParkingStatus(const uint32_t *pallet_grid, size_t palle
         status.slots_count = (slots_count > 10) ? 10 : slots_count;
         for (size_t i = 0; i < status.slots_count; i++) {
             status.slots[i] = slots_array[i];
-        }
-    }
-
-    if (rfid && rfid_count > 0) {
-        status.rfid_count = (rfid_count > 10) ? 10 : rfid_count;
-        for (size_t i = 0; i < status.rfid_count; i++) {
-            memcpy(status.rfid[i], rfid[i], sizeof(status.rfid[i]));
         }
     }
 
@@ -170,18 +174,13 @@ void ParkingHandler::sendParkingEvent(const ParkingEvent &event) {
 }
 
 void ParkingHandler::sendParkingEvent(uint32_t event_id, uint32_t slot_id, uint64_t timestamp,
-                                      ParkingEvent_EventType event_type, const uint8_t *rfid,
-                                      bool is_done) {
+                                      ParkingEvent_EventType event_type, bool is_done) {
     ParkingEvent event = ParkingEvent_init_zero;
     event.event_id = event_id;
     event.slot_id = slot_id;
     event.timestamp = timestamp;
     event.event_type = event_type;
     event.is_done = is_done;
-
-    if (rfid) {
-        memcpy(event.rfid, rfid, sizeof(event.rfid));
-    }
 
     sendParkingEvent(event);
 }

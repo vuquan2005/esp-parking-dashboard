@@ -4,7 +4,7 @@
 # ScanResults.AP
 ScanResults.AP.ssid                   max_size:33
 ScanResults.AP.bssid                  max_size:6, fixed_length:true
-ScanResults.access_points             max_count:10
+ScanResults.access_points             max_count:3
 
 # DeviceStatus
 DeviceStatus.sta_ssid                 max_size:33
@@ -22,7 +22,4 @@ WifiConfig.ap_password                max_size:65
 # ParkingStatus
 ParkingStatus.pallet_grid             max_count:12
 ParkingStatus.slots                   max_count:10
-ParkingStatus.rfid                    max_count:10, max_size:16, fixed_length:true
 
-# ParkingEvent
-ParkingEvent.rfid                     max_size:10, fixed_length:true
