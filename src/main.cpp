@@ -5,6 +5,7 @@
 #include "parking_handler.h"
 #include "websever.h"
 #include "wifimanager.h"
+#include <sys/time.h>
 #include <time.h>
 
 SET_LOOP_TASK_STACK_SIZE(16384);
@@ -15,8 +16,9 @@ WifiManager wifiManager;
 ParkingHandler parkingHandler(wifiManager);
 
 void sendCurrentParkingStatus();
-void sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type,
+bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type,
                              bool is_done = false);
+bool updateUnixTimeFromSerialMessage(const String &msg);
 
 // ==========================================
 // 1. CẤU HÌNH CHÂN (HARDWARE)
@@ -168,6 +170,8 @@ void doc_sensor_uart() {
             // Kiểm tra hợp lệ: tầng 1-3, cột 1-4
             if (t >= 1 && t <= 3 && c >= 1 && c <= 4)
                 sw[t][c] = state; // Cập nhật trạng thái công tắc
+        } else if (msg.startsWith("TIME:")) {
+            updateUnixTimeFromSerialMessage(msg);
         }
     }
 }
@@ -482,7 +486,7 @@ void sendCurrentParkingStatus() {
 // increment event_id_counter when lay_xe() or gui_xe() is called
 uint32_t event_id_counter = 1;
 
-void sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type, bool is_done) {
+bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type, bool is_done) {
     struct timespec ts;
     uint64_t timestamp_ms = 0;
 
@@ -491,8 +495,26 @@ void sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type
         parkingHandler.sendParkingEvent(event_id_counter++, slot_id, timestamp_ms, event_type,
                                         is_done);
     } else {
+        return false;
         Serial.println("Failed to get current time");
     }
+}
+
+bool updateUnixTimeFromSerialMessage(const String &msg) {
+    String time_str = msg.substring(5);
+    time_str.trim();
+
+    unsigned long unix_time = strtoul(time_str.c_str(), NULL, 10);
+    if (unix_time > 1000000000UL) {
+        struct timeval tv;
+        tv.tv_sec = (time_t)unix_time;
+        tv.tv_usec = 0;
+        settimeofday(&tv, NULL);
+        Serial.println("Time updated from serial: " + time_str);
+        return true;
+    }
+    Serial.println("Failed to parse Unix time: " + time_str);
+    return false;
 }
 
 void loop() {
