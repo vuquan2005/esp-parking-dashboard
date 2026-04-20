@@ -406,25 +406,51 @@ void day_den_sw(int t, int pallet, String huong, int sw_target) {
     delay(400);
 }
 
+/**
+ * @brief Dọn đường vét cạn cho pallet ngang trên tầng `t`.
+ *
+ * Hàm này di chuyển các pallet ngang trên tầng `t` để giải phóng
+ * vị trí cột đích `cot_trong_yc` trước khi pallet chính được đưa lên hoặc hạ xuống.
+ *
+ * @param t Tầng hiện tại của pallet ngang cần dọn đường.
+ * @param cot_trong_yc Cột đích cần giải phóng (1..4).
+ *
+ * @note
+ * - `NP` là lệnh di chuyển sang phải (cột tăng).
+ * - `NT` là lệnh di chuyển sang trái (cột giảm).
+ */
 void don_duong_vet_can(int t, int cot_trong_yc) {
     Serial.printf("\n--- DON DUONG T%d CHO COT %d ---\n", t, cot_trong_yc);
+    // [VQ]
     if (cot_trong_yc == 1) {
+        // Giải phóng cột 1: đẩy pallet ở cột 3 sang phải đến sw 4,
+        // rồi pallet cột 2 sang phải đến sw 3, cuối cùng pallet cột 1 sang phải đến sw 2.
         day_den_sw(t, 3, "NP", 4);
         day_den_sw(t, 2, "NP", 3);
         day_den_sw(t, 1, "NP", 2);
     } else if (cot_trong_yc == 2) {
+        // Giải phóng cột 2: kéo pallet cột 1 sang trái đến sw 1,
+        // sau đó đẩy pallet cột 3 sang phải đến sw 4,
+        // rồi đẩy pallet cột 2 sang phải đến sw 3.
         day_den_sw(t, 1, "NT", 1);
         day_den_sw(t, 3, "NP", 4);
         day_den_sw(t, 2, "NP", 3);
     } else if (cot_trong_yc == 3) {
+        // Giải phóng cột 3: kéo pallet cột 1 sang trái đến sw 1,
+        // kéo pallet cột 2 sang trái đến sw 2,
+        // rồi đẩy pallet cột 3 sang phải đến sw 4.
         day_den_sw(t, 1, "NT", 1);
         day_den_sw(t, 2, "NT", 2);
         day_den_sw(t, 3, "NP", 4);
     } else if (cot_trong_yc == 4) {
+        // Giải phóng cột 4: kéo pallet cột 1 sang trái đến sw 1,
+        // kéo pallet cột 2 sang trái đến sw 2,
+        // kéo pallet cột 3 sang trái đến sw 3.
         day_den_sw(t, 1, "NT", 1);
         day_den_sw(t, 2, "NT", 2);
         day_den_sw(t, 3, "NT", 3);
     }
+    // [VQ END]
 }
 
 // ==========================================
@@ -453,6 +479,10 @@ void gui_xe(String uid) {
         int t = ds_o[muc_tieu].tang;
         int c = ds_o[muc_tieu].cot;
         ds_o[muc_tieu].ma_the_uid = uid;
+        // [VQ]
+        // [UI HOOK] selected slot identified; prepare parking_event.event_type =
+        // ParkingEvent_EventType_IN and mark target slot_id = muc_tieu + 1 as PROCESSING/PENDING
+        // [VQ END]
         Serial.printf("\n>>> GUI XE VAO T%d-C%d\n", t, c);
 
         if (t > 1) {
@@ -462,6 +492,9 @@ void gui_xe(String uid) {
 
             // --- HẠ XUỐNG TẦNG 1 ---
 
+            // [VQ]
+            // [UI HOOK] animate selected slot moving down to floor 1
+            // [VQ END]
             gui_lenh_motor(String(t) + String(c) + "KD");
             delay(300);
 
@@ -479,6 +512,9 @@ void gui_xe(String uid) {
 
         if (t > 1) {
             // --- KÉO LÊN TẦNG GỐC ---
+            // [VQ]
+            // [UI HOOK] animate selected slot moving up to target floor
+            // [VQ END]
             gui_lenh_motor(String(t) + String(c) + "KU");
             delay(300);
 
@@ -492,8 +528,9 @@ void gui_xe(String uid) {
 
         // [VQ]
         sendCurrentParkingStatus();
-        sendCurrentParkingEvent(muc_tieu + 1, ParkingEvent_EventType_OUT, true);
-        // [VQ END]
+        sendCurrentParkingEvent(muc_tieu + 1, ParkingEvent_EventType_IN, true);
+        // [UI HOOK] complete send event; set parking_event.event_type = ParkingEvent_EventType_IN
+        // and update slot state to OCCUPIED on UI [VQ END]
         beep(1);
     }
 }
@@ -501,6 +538,10 @@ void gui_xe(String uid) {
 void lay_xe(int chi_so_o) {
     int t = ds_o[chi_so_o].tang;
     int c = ds_o[chi_so_o].cot;
+    // [VQ]
+    // [UI HOOK] pickup process started; prepare parking_event.event_type =
+    // ParkingEvent_EventType_OUT and show slot_id = chi_so_o + 1 as PROCESSING
+    // [VQ END]
     Serial.printf("\n>>> LAY XE T%d-C%d\n", t, c);
 
     if (t > 1) {
@@ -509,6 +550,9 @@ void lay_xe(int chi_so_o) {
         }
 
         // --- HẠ PALLET XUỐNG TẦNG 1 ---
+        // [VQ]
+        // [UI HOOK] animate selected slot moving down to floor 1
+        // [VQ END]
         gui_lenh_motor(String(t) + String(c) + "KD");
         delay(300);
 
@@ -526,6 +570,9 @@ void lay_xe(int chi_so_o) {
 
     if (t > 1) {
         // --- KÉO PALLET VỀ TẦNG GỐC ---
+        // [VQ]
+        // [UI HOOK] animate selected slot moving up to root floor
+        // [VQ END]
         gui_lenh_motor(String(t) + String(c) + "KU");
         delay(300);
 
@@ -543,7 +590,8 @@ void lay_xe(int chi_so_o) {
     // [VQ]
     sendCurrentParkingStatus();
     sendCurrentParkingEvent(chi_so_o + 1, ParkingEvent_EventType_OUT, true);
-    // [VQ END]
+    // [UI HOOK] complete pickup event; set parking_event.event_type = ParkingEvent_EventType_OUT
+    // and update slot state to EMPTY on UI [VQ END]
     beep(2);
 }
 
