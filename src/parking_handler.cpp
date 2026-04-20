@@ -168,16 +168,16 @@ void ParkingHandler::sendParkingEvent(const ParkingEvent &event) {
     msg.payload.parking_event = event;
 
     if (sendParking(msg)) {
-        Serial.printf("[ParkingHandler] ParkingEvent sent (slot=%u, type=%d)\n", event.slot_id,
+        Serial.printf("[ParkingHandler] ParkingEvent sent (pallet=%u, type=%d)\n", event.pallet_id,
                       event.event_type);
     }
 }
 
-void ParkingHandler::sendParkingEvent(uint32_t event_id, uint32_t slot_id, uint64_t timestamp,
+void ParkingHandler::sendParkingEvent(uint32_t event_id, uint32_t pallet_id, uint64_t timestamp,
                                       ParkingEvent_EventType event_type, bool is_done) {
     ParkingEvent event = ParkingEvent_init_zero;
     event.event_id = event_id;
-    event.slot_id = slot_id;
+    event.pallet_id = pallet_id;
     event.timestamp = timestamp;
     event.event_type = event_type;
     event.is_done = is_done;

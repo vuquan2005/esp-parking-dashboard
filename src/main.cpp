@@ -72,27 +72,118 @@ bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type
                              bool is_done = false);
 bool updateUnixTimeFromSerialMessage(const String &msg);
 
-void sendCurrentParkingStatus() {
-    static const size_t kSlotCount = 10;
+/**
+ * @brief Parse cấu hình grid 1D (logic) từ mảng trạng thái cảm biến SW (vật lý).
+ *
+ * @param sw Mảng 2 chiều lưu trạng thái công tắc (Tầng 1..3 tương ứng sw[1]..sw[3], Cột 1..4)
+ * @param rows Số lượng hàng của grid logic (mặc định 3)
+ * @param cols Số lượng cột của grid logic (mặc định 4)
+ * @param grid Con trỏ mảng 1 chiều lưu trữ ID của pallet kích thước rows * cols (0 = khoảng trống)
+ * @return true nếu map thành công, false nếu dữ liệu cảm biến không hợp lệ
+ */
+bool parseGridFromSW(bool sw[4][5], uint8_t rows, uint8_t cols, uint8_t *grid) {
+    // Bảo vệ: Tránh truy xuất vượt quá kích thước mảng sw[4][5]
+    if (rows > 3 || cols > 4) {
+        return false;
+    }
 
-    // Tối ưu: Dùng static const để mảng luôn nằm sẵn trong RAM/Flash, không khởi tạo lại mỗi lần
-    static const uint32_t pallet_grid[kSlotCount] = {0};
+    // Tạo mảng tạm để không làm hỏng grid gốc nếu parse thất bại giữa chừng
+    uint8_t temp_grid[rows * cols];
+    for (int i = 0; i < rows * cols; i++) {
+        temp_grid[i] = 0;
+    }
+
+    uint8_t next_id = 1;
+
+    // Quét từng hàng logic của grid (từ trên xuống dưới: row 0 -> row 2)
+    for (uint8_t row = 0; row < rows; row++) {
+        uint8_t zero_count = 0;
+
+        // CÔNG THỨC ĐẢO CHIỀU TỌA ĐỘ Y (Mapping Logic -> Vật lý)
+        // Nếu rows = 3: row = 0 (Cao nhất) -> sw_row = 3
+        //               row = 1 (Giữa)     -> sw_row = 2
+        //               row = 2 (Trệt)     -> sw_row = 1
+        uint8_t sw_row = rows - row;
+
+        // Quét từng cột (từ trái qua phải)
+        for (uint8_t col = 0; col < cols; col++) {
+            // Đọc từ mảng sw (chú ý: cột của sw bắt đầu từ 1, nên phải + 1)
+            bool has_pallet = sw[sw_row][col + 1];
+
+            if (has_pallet) {
+                temp_grid[row * cols + col] = next_id++;
+            } else {
+                temp_grid[row * cols + col] = 0;
+                zero_count++;
+            }
+        }
+
+        // KIỂM TRA ĐIỀU KIỆN HỢP LỆ (Giữ nguyên tinh thần của hệ thống cũ)
+        if (row == 0) {
+            // Hàng trên cùng (Cao nhất) phải luôn đầy pallet
+            if (zero_count != 0) {
+                return false;
+            }
+        } else {
+            // Các hàng bên dưới phải có đúng 1 khoảng trống để di chuyển
+            if (zero_count != 1) {
+                return false;
+            }
+        }
+    }
+
+    // Nếu vượt qua toàn bộ bước kiểm tra, gán dữ liệu vào mảng grid gốc
+    for (int i = 0; i < rows * cols; i++) {
+        grid[i] = temp_grid[i];
+    }
+
+    return true;
+}
+
+/**
+ * @brief Gửi trạng thái sử dụng chỗ đậu xe hiện tại.
+ *
+ * Hàm này thu thập thông tin trạng thái chiếm chỗ từ mảng trạng thái cục bộ
+ * `ds_o` và gửi thông điệp trạng thái bãi đậu xe qua `parkingHandler`.
+ */
+void sendCurrentParkingStatus() {
+    static const uint8_t kSlotCount = 10;
+    static const uint8_t kGridRows = 3;
+    static const uint8_t kGridCols = 4;
+    static const size_t kPalletGridCount = size_t(kGridRows) * size_t(kGridCols);
+
+    uint8_t grid_ids[kPalletGridCount] = {0};
+    if (!parseGridFromSW(sw, kGridRows, kGridCols, grid_ids)) {
+        Serial.println("[Warning] Invalid SW grid, sending empty pallet_grid");
+    }
+
+    uint32_t pallet_grid[kPalletGridCount] = {0};
+    for (size_t i = 0; i < kPalletGridCount; ++i) {
+        pallet_grid[i] = grid_ids[i];
+    }
 
     // Sửa lỗi: Khởi tạo mảng slots với giá trị mặc định để tránh giá trị rác
     ParkingStatus_Status slots[kSlotCount] = {ParkingStatus_Status_EMPTY};
 
     for (size_t i = 0; i < kSlotCount; ++i) {
-        // Mở comment đoạn này nếu ds_o đã sẵn sàng
         bool occupied = (ds_o[i].ma_the_uid.length() > 0);
         slots[i] = occupied ? ParkingStatus_Status_OCCUPIED : ParkingStatus_Status_EMPTY;
     }
 
-    parkingHandler.sendParkingStatus(pallet_grid, kSlotCount, slots, kSlotCount);
+    parkingHandler.sendParkingStatus(pallet_grid, kPalletGridCount, slots, kSlotCount);
 }
 
 // increment event_id_counter when lay_xe() or gui_xe() is called
 uint32_t event_id_counter = 1;
 
+/**
+ * @brief Gửi một sự kiện đậu xe đến hệ thống phía sau.
+ *
+ * @param slot_id ID của chỗ đậu xe.
+ * @param event_type Loại sự kiện đậu xe.
+ * @param is_done True nếu sự kiện đã hoàn thành thành công.
+ * @return true khi sự kiện được gửi thành công, false nếu lấy thời gian thất bại.
+ */
 bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type, bool is_done) {
     struct timespec ts;
     uint64_t timestamp_ms = 0;
@@ -108,6 +199,15 @@ bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type
     }
 }
 
+/**
+ * @brief Cập nhật đồng hồ thiết bị từ thông điệp thời gian qua serial.
+ *
+ * Thông điệp đầu vào được kỳ vọng bắt đầu bằng "TIME:" theo sau là giá trị
+ * Unix epoch tính theo giây.
+ *
+ * @param msg Thông điệp serial chứa giá trị thời gian Unix.
+ * @return true khi đồng hồ được cập nhật thành công, false nếu không.
+ */
 bool updateUnixTimeFromSerialMessage(const String &msg) {
     // Kiểm tra an toàn độ dài chuỗi trước khi thao tác pointer
     if (msg.length() <= 5) {
@@ -377,6 +477,10 @@ void gui_xe(String uid) {
             }
             gui_lenh_motor("st");
         }
+
+        // =====================================================================
+        sendCurrentParkingStatus();
+        sendCurrentParkingEvent(muc_tieu + 1, ParkingEvent_EventType_OUT, true);
         beep(1);
     }
 }
@@ -422,6 +526,9 @@ void lay_xe(int chi_so_o) {
 
     ds_o[chi_so_o].ma_the_uid = "";
     Serial.println(">> HOAN TAT LAY XE. O DA TRONG.");
+    // =====================================================================
+    sendCurrentParkingStatus();
+    sendCurrentParkingEvent(chi_so_o + 1, ParkingEvent_EventType_OUT, true);
     beep(2);
 }
 
@@ -458,6 +565,9 @@ void setup() {
     pinMode(PIN_BUZZER, OUTPUT);
     pinMode(PIN_NUT_XAC_NHAN, INPUT);
 
+    memset(sw, 0, sizeof(sw));
+    memset(cam_bien_vi_tri, 0, sizeof(cam_bien_vi_tri));
+
     for (int i = 0; i < 10; i++) {
         if (MANG_IR[i] == 36 || MANG_IR[i] == 39) {
             pinMode(MANG_IR[i], INPUT);
@@ -487,7 +597,15 @@ void setup() {
 }
 
 void loop() {
-
+    // ================================================
+    if (Serial2.available() > 0) {
+        String msg = Serial2.readStringUntil('\n');
+        msg.trim();
+        if (msg.startsWith("TIME:")) {
+            updateUnixTimeFromSerialMessage(msg);
+        }
+    }
+    // ================================================
     parkingHandler.processCommands();
     parkingHandler.loop();
     webManager.loop();
