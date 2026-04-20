@@ -1,86 +1,119 @@
 ```mermaid
 flowchart TD
-    Start([Khởi động hệ thống]) --> Init["<b>SETUP</b><br/>- RFID Init<br/>- IR sensors Init<br/>- UART Init<br/>- Buzzer Init"]
-    Init --> Loop{"<b>MAIN LOOP</b><br/>Chế độ Vét Cạn"}
+subgraph GUI_XE["gui_xe(uid)"]
+A1["Scan slots: tìm ô trống và IR thật"]
+A2{"Có ô mục tiêu?"}
+A3["Đặt ds_o[muc_tieu].ma_the_uid = uid"]
+A4["In log: 'GUI XE VAO Tt-Cc'"]
+A5{"t > 1?"}
+A6["Chuẩn bị đường đi trên tầng i"]
+A7["gui_lenh_motor('t c KD')"]
+A8["delay(300)"]
+A9["Chờ cam_bien_vi_tri[1][c] == true"]
+A10["gui_lenh_motor('st')"]
+A11["mo_cong()"]
+A12["cho_nguoi_dung_xac_nhan()"]
+A13["dong_cua_chinh()"]
+A14{"t > 1?"}
+A15["gui_lenh_motor('t c KU')"]
+A16["delay(300)"]
+A17["Chờ cam_bien_vi_tri[t][c] == true"]
+A18["gui_lenh_motor('st')"]
+A19["sendCurrentParkingStatus() / sendCurrentParkingEvent(...)"]
+A20["beep(1)"]
+A21["End"]
+end
 
-    Loop --> ReadUART["📡 Đọc UART<br/>doc_sensor_uart()"]
-    ReadUART --> UpdateSW["Cập nhật trạng thái<br/>Limit Switch sw[t][c]"]
+subgraph LAY_XE["lay_xe(chi_so_o)"]
+B1["Đọc t,c từ ds_o[chi_so_o]"]
+B2{"t > 1?"}
+B3["Chuẩn bị đường đi trên tầng i"]
+B4["gui_lenh_motor('t c KD')"]
+B5["delay(300)"]
+B6["Chờ cam_bien_vi_tri[1][c] == true"]
+B7["gui_lenh_motor('st')"]
+B8["mo_cong()"]
+B9["cho_nguoi_dung_xac_nhan()"]
+B10["dong_cua_chinh()"]
+B11{"t > 1?"}
+B12["gui_lenh_motor('t c KU')"]
+B13["delay(300)"]
+B14["Chờ cam_bien_vi_tri[t][c] == true"]
+B15["gui_lenh_motor('st')"]
+B16["ds_o[chi_so_o].ma_the_uid = empty"]
+B17["Log 'HOAN TAT LAY XE. O DA TRONG.'"]
+B18["sendCurrentParkingStatus() / sendCurrentParkingEvent(...)"]
+B19["beep(2)"]
+B20["End"]
+end
 
-    UpdateSW --> ScanIR["🔍 Quét IR Sensors"]
-    ScanIR --> CheckIRChange{"IR status<br/>thay đổi?"}
-    CheckIRChange -->|Có| LogIR["Log: CO XE/TRONG<br/>Cập nhật ir_cu[]"]
-    CheckIRChange -->|Không| ScanRFID["📱 Quét RFID"]
-    LogIR --> ScanRFID
+subgraph PATH["don_duong_vet_can + day_den_sw"]
+C1["don_duong_vet_can(t, c)"]
+C2["Chọn dãy lệnh day_den_sw theo cột"]
+C3["day_den_sw(...)"]
+C4["cap_nhat_tin_hieu_ngoai_vi()"]
+C5{"sw[t][sw_target] == true?"}
+C6["gui_lenh_motor cmd"]
+C7["Chờ sw[t][sw_target] true hoặc timeout"]
+C8["gui_lenh_motor cmd + ST"]
+C9["gui_lenh_motor('st')"]
+C10["delay(400)"]
+end
 
-    ScanRFID --> CardPresent{"Thẻ RFID<br/>mới?"}
-    CardPresent -->|Không| Loop
-    CardPresent -->|Có| ReadUID["Đọc UID<br/>uid = xxxxxxxx"]
+    A1 --> A2
+    A2 -- No --> A21
+    A2 -- Yes --> A3
+    A3 --> A4
+    A4 --> A5
+    A5 -- Yes --> A6
+    A6 --> C1
+    C1 --> C2
+    C2 --> C3
+    C3 --> C4
+    C4 --> C5
+    C5 -- No --> C6
+    C6 --> C7
+    C7 --> C8
+    C8 --> C9
+    C9 --> C10
+    C10 --> A7
+    A5 -- No --> A11
+    A7 --> A8
+    A8 --> A9
+    A9 --> A10
+    A10 --> A11
+    A11 --> A12
+    A12 --> A13
+    A13 --> A14
+    A14 -- Yes --> A15
+    A15 --> A16
+    A16 --> A17
+    A17 --> A18
+    A18 --> A19
+    A14 -- No --> A19
+    A19 --> A20
+    A20 --> A21
 
-    ReadUID --> FindTag{"Tìm uid<br/>trong ds_o[]?"}
-
-    FindTag -->|✓ Tìm thấy| LayXe["⬆️ <b>LAY_XE</b><br/>Lấy xe ra"]
-    FindTag -->|✗ Không tìm| GuiXe["⬇️ <b>GUI_XE</b><br/>Đỗ xe vào"]
-
-    LayXe --> CheckTang1["Tang > 1?"]
-    CheckTang1 -->|Có| ClearPath1["Don_duong_vet_can<br/>Dọn đường các tầng<br/>dưới"]
-    CheckTang1 -->|Không| PullCar["Gửi lệnh KD<br/>Kéo dọc xe xuống"]
-    ClearPath1 --> PullCar
-    PullCar --> ClearUID["Xóa UID từ ô"]
-    ClearUID --> Beep2["🔔 Phát 2 tiếng beep<br/>Thành công lấy xe"]
-    Beep2 --> Loop
-
-    GuiXe --> FindEmpty["Tìm ô trống:<br/>- ds_o[i].uid == ''<br/>- IR sensor == HIGH"]
-    FindEmpty --> SpotFound{"Tìm thấy<br/>ô trống?"}
-
-    SpotFound -->|Không| Full["❌ BAI DAY!<br/>Bãi đã đầy"]
-    Full --> Beep3["🔔 Phát 3 tiếng beep<br/>Thất bại"]
-    Beep3 --> Loop
-
-    SpotFound -->|Có| SaveUID["Lưu UID vào ds_o[idx]"]
-    SaveUID --> CheckTang2["Tang > 1?"]
-    CheckTang2 -->|Có| ClearPath2["Don_duong_vet_can<br/>Dọn đường các tầng<br/>dưới"]
-    CheckTang2 -->|Không| InsertCar["Gửi lệnh KD<br/>Kéo dọc xe vào"]
-    ClearPath2 --> InsertCar
-    InsertCar --> Beep1["🔔 Phát 1 tiếng beep<br/>Thành công lưu xe"]
-    Beep1 --> Loop
-
-    style Start fill:#90EE90
-    style Init fill:#87CEEB
-    style Loop fill:#FFD700
-    style LayXe fill:#FF6B6B
-    style GuiXe fill:#4ECDC4
-    style Full fill:#FF6B6B
-    style Beep2 fill:#90EE90
-    style Beep1 fill:#90EE90
-    style Beep3 fill:#FF6B6B
-
+    B1 --> B2
+    B2 -- Yes --> B3
+    B3 --> C1
+    B3 --> B4
+    B4 --> B5
+    B5 --> B6
+    B6 --> B7
+    B7 --> B8
+    B8 --> B9
+    B9 --> B10
+    B10 --> B11
+    B11 -- Yes --> B12
+    B12 --> B13
+    B13 --> B14
+    B14 --> B15
+    B15 --> B16
+    B16 --> B17
+    B17 --> B18
+    B18 --> B19
+    B19 --> B20
+    B2 -- No --> B8
+    B11 -- No --> B16
 ```
-
-```mermaid
-
-flowchart TD
-    Start([Day_den_sw<br/>t, pallet, huong, sw_target]) --> CheckSW{"Đã ở<br/>SW target?"}
-    CheckSW -->|Có| Skip["⊘ Bỏ qua<br/>đã chạm SW"]
-    Skip --> End1([Return])
-
-    CheckSW -->|Không| SendCmd["Gửi lệnh UART<br/>[t][pallet][huong]"]
-    SendCmd --> ReadUART["Đọc UART<br/>Cập nhật sw[]"]
-
-    ReadUART --> WaitLoop{"SW[t][target]<br/>= true?"}
-    WaitLoop -->|Không| TimeCheck{"Timeout<br/>10s?"}
-    TimeCheck -->|Không| ReadUART
-    TimeCheck -->|Có| StopEM["⚠️ Gửi 'st'<br/>MOTOR KET"]
-    StopEM --> End2([Error])
-
-    WaitLoop -->|Có| StopMotor["Gửi [t][pallet]ST<br/>Dừng motor"]
-    StopMotor --> Wait["Chờ 400ms"]
-    Wait --> End3([Hoàn thành])
-
-    style Start fill:#FFD700
-    style SendCmd fill:#87CEEB
-    style StopMotor fill:#90EE90
-    style StopEM fill:#FF6B6B
-    style End3 fill:#90EE90
-    style End2 fill:#FF6B6B
-```
-

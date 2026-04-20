@@ -67,7 +67,7 @@ WebManager webManager;
 WifiManager wifiManager;
 ParkingHandler parkingHandler(wifiManager);
 
-void sendCurrentParkingStatus();
+bool sendCurrentParkingStatus(const ParkingStatus_Status *overrideSlots = nullptr);
 bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type,
                              bool is_done = false);
 bool updateUnixTimeFromSerialMessage(const String &msg);
@@ -145,15 +145,22 @@ bool parseGridFromSW(bool sw[4][5], uint8_t rows, uint8_t cols, uint8_t *grid) {
  *
  * Hàm này thu thập thông tin trạng thái chiếm chỗ từ mảng trạng thái cục bộ
  * `ds_o` và gửi thông điệp trạng thái bãi đậu xe qua `parkingHandler`.
+ *
+ * @param overrideSlots Optional array of slot status values to override the
+ *        locally-derived occupancy state. Nếu `nullptr`, trạng thái sẽ được
+ *        tính toán từ `ds_o`.
+ * @return true nếu dữ liệu SW hợp lệ và trạng thái được gửi; false nếu grid
+ *         SW không hợp lệ.
  */
-void sendCurrentParkingStatus() {
+bool sendCurrentParkingStatus(const ParkingStatus_Status *overrideSlots) {
     static const uint8_t kSlotCount = 10;
     static const uint8_t kGridRows = 3;
     static const uint8_t kGridCols = 4;
     static const size_t kPalletGridCount = size_t(kGridRows) * size_t(kGridCols);
 
     uint8_t grid_ids[kPalletGridCount] = {0};
-    if (!parseGridFromSW(sw, kGridRows, kGridCols, grid_ids)) {
+    bool grid_ok = parseGridFromSW(sw, kGridRows, kGridCols, grid_ids);
+    if (!grid_ok) {
         Serial.println("[Warning] Invalid SW grid, sending empty pallet_grid");
     }
 
@@ -162,18 +169,22 @@ void sendCurrentParkingStatus() {
         pallet_grid[i] = grid_ids[i];
     }
 
-    // Sửa lỗi: Khởi tạo mảng slots với giá trị mặc định để tránh giá trị rác
-    ParkingStatus_Status slots[kSlotCount] = {ParkingStatus_Status_EMPTY};
+    ParkingStatus_Status slots[kSlotCount] = {ParkingStatus_Status_UNKNOWN};
 
     for (size_t i = 0; i < kSlotCount; ++i) {
-        bool occupied = (ds_o[i].ma_the_uid.length() > 0);
-        slots[i] = occupied ? ParkingStatus_Status_OCCUPIED : ParkingStatus_Status_EMPTY;
+        if (overrideSlots && overrideSlots[i] != ParkingStatus_Status_UNKNOWN) {
+            slots[i] = overrideSlots[i];
+        } else {
+            bool occupied = (ds_o[i].ma_the_uid.length() > 0);
+            slots[i] = occupied ? ParkingStatus_Status_OCCUPIED : ParkingStatus_Status_EMPTY;
+        }
     }
 
     parkingHandler.sendParkingStatus(pallet_grid, kPalletGridCount, slots, kSlotCount);
+    return grid_ok;
 }
 
-// increment event_id_counter when lay_xe() or gui_xe() is called
+// increment event_id_counter when lay_xe() hoặc gui_xe() is called
 uint32_t event_id_counter = 1;
 
 /**
