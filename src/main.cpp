@@ -62,7 +62,7 @@ bool cua_da_mo_hoan_toan = false;
 
 // ==========================================
 
-// Global Instances
+// [VQ]
 WebManager webManager;
 WifiManager wifiManager;
 ParkingHandler parkingHandler(wifiManager);
@@ -232,6 +232,7 @@ bool updateUnixTimeFromSerialMessage(const String &msg) {
     Serial.println(time_str_ptr);
     return false;
 }
+// [VQ]
 
 // ==========================================
 // 3. HAM TIEN ICH & CONG
@@ -478,9 +479,10 @@ void gui_xe(String uid) {
             gui_lenh_motor("st");
         }
 
-        // =====================================================================
+        // [VQ]
         sendCurrentParkingStatus();
         sendCurrentParkingEvent(muc_tieu + 1, ParkingEvent_EventType_OUT, true);
+        // [VQ END]
         beep(1);
     }
 }
@@ -526,9 +528,11 @@ void lay_xe(int chi_so_o) {
 
     ds_o[chi_so_o].ma_the_uid = "";
     Serial.println(">> HOAN TAT LAY XE. O DA TRONG.");
-    // =====================================================================
+
+    // [VQ]
     sendCurrentParkingStatus();
     sendCurrentParkingEvent(chi_so_o + 1, ParkingEvent_EventType_OUT, true);
+    // [VQ END]
     beep(2);
 }
 
@@ -536,6 +540,7 @@ void lay_xe(int chi_so_o) {
 // 6. SETUP & LOOP
 // ==========================================
 void setup() {
+    // [VQ]
     wifiManager.begin();
     webManager.begin();
 
@@ -552,6 +557,8 @@ void setup() {
     });
 
     parkingHandler.begin();
+    // [VQ END]
+
     Serial.begin(115200);
     Serial2.begin(115200, SERIAL_8N1, PIN_UART_RX2, PIN_UART_TX2);
     Serial1.begin(115200, SERIAL_8N1, PIN_UART_RX1, -1);
@@ -597,7 +604,7 @@ void setup() {
 }
 
 void loop() {
-    // ================================================
+    // [VQ]
     if (Serial2.available() > 0) {
         String msg = Serial2.readStringUntil('\n');
         msg.trim();
@@ -605,10 +612,10 @@ void loop() {
             updateUnixTimeFromSerialMessage(msg);
         }
     }
-    // ================================================
     parkingHandler.processCommands();
     parkingHandler.loop();
     webManager.loop();
+    // [VQ END]
 
     cap_nhat_tin_hieu_ngoai_vi();
 
