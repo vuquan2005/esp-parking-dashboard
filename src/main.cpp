@@ -17,13 +17,16 @@ SET_LOOP_TASK_STACK_SIZE(16384);
 #define PIN_BUZZER 4
 #define PIN_NUT_XAC_NHAN 34
 
-#define PIN_CONG_IN1 32
-#define PIN_CONG_IN2 33
+#define PIN_SERVO_CONG 32
 
 #define PIN_UART_RX2 16
 #define PIN_UART_TX2 17
 #define PIN_UART_RX1 35
 #define PIN_UART_TX1 -1
+
+const int KENH_PWM = 0;
+const int TAN_SO_PWM = 50;
+const int DO_PHAN_GIAI = 16;
 
 #define IR_T1_C1 21
 #define IR_T1_C2 13
@@ -262,9 +265,13 @@ void gui_lenh_motor(String lenh) {
     Serial.println("[MASTER -> ACTION]: " + lenh);
 }
 
+void dieu_khien_goc_servo(int goc) {
+    int duty = map(goc, 0, 180, 1638, 8192);
+    ledcWrite(KENH_PWM, duty);
+}
+
 void dung_motor_cong() {
-    digitalWrite(PIN_CONG_IN1, LOW);
-    digitalWrite(PIN_CONG_IN2, LOW);
+    ledcWrite(KENH_PWM, 0);
 }
 
 void cap_nhat_tin_hieu_ngoai_vi();
@@ -273,8 +280,7 @@ void mo_cong() {
     Serial.println(">> DANG MO CONG...");
     cua_da_mo_hoan_toan = false;
 
-    digitalWrite(PIN_CONG_IN1, HIGH);
-    digitalWrite(PIN_CONG_IN2, LOW);
+    dieu_khien_goc_servo(90);
 
     unsigned long timeout = millis();
     while (cua_da_mo_hoan_toan == false) {
@@ -295,8 +301,7 @@ void dong_cua_chinh() {
     Serial.println(">> DANG DONG CUA...");
     cua_da_dong_hoan_toan = false;
 
-    digitalWrite(PIN_CONG_IN1, LOW);
-    digitalWrite(PIN_CONG_IN2, HIGH);
+    dieu_khien_goc_servo(0);
 
     unsigned long timeout = millis();
     while (cua_da_dong_hoan_toan == false) {
@@ -486,6 +491,9 @@ void gui_xe(String uid) {
         Serial.printf("\n>>> GUI XE VAO T%d-C%d\n", t, c);
 
         if (t > 1) {
+            if (t == 2) {
+                don_duong_vet_can(2, 4);
+            }
             for (int i = 1; i < t; i++) {
                 don_duong_vet_can(i, c);
             }
@@ -545,6 +553,9 @@ void lay_xe(int chi_so_o) {
     Serial.printf("\n>>> LAY XE T%d-C%d\n", t, c);
 
     if (t > 1) {
+        if (t == 2) {
+            don_duong_vet_can(2, 4);
+        }
         for (int i = 1; i < t; i++) {
             don_duong_vet_can(i, c);
         }
@@ -622,8 +633,8 @@ void setup() {
     Serial2.begin(115200, SERIAL_8N1, PIN_UART_RX2, PIN_UART_TX2);
     Serial1.begin(115200, SERIAL_8N1, PIN_UART_RX1, -1);
 
-    pinMode(PIN_CONG_IN1, OUTPUT);
-    pinMode(PIN_CONG_IN2, OUTPUT);
+    ledcSetup(KENH_PWM, TAN_SO_PWM, DO_PHAN_GIAI);
+    ledcAttachPin(PIN_SERVO_CONG, KENH_PWM);
     dung_motor_cong();
 
     SPI.begin();
@@ -659,6 +670,8 @@ void setup() {
     }
 
     Serial.println("\n--- HE THONG MASTER FULL READY ---");
+    don_duong_vet_can(1, 4);
+    don_duong_vet_can(2, 4);
     beep(1);
 }
 
