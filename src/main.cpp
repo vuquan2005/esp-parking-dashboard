@@ -70,10 +70,12 @@ WebManager webManager;
 WifiManager wifiManager;
 ParkingHandler parkingHandler(wifiManager);
 
-bool sendCurrentParkingStatus(const ParkingStatus_Status *overrideSlots = nullptr);
+bool sendCurrentParkingStatus();
 bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type,
                              bool is_done = false);
-bool updateUnixTimeFromSerialMessage(const String &msg);
+// bool updateUnixTimeFromSerialMessage(const String &msg);
+
+static ParkingStatus_Status Satus[10] = {ParkingStatus_Status_UNKNOWN};
 
 /**
  * @brief Parse cấu hình grid 1D (logic) từ mảng trạng thái cảm biến SW (vật lý).
@@ -155,7 +157,7 @@ bool parseGridFromSW(bool sw[4][5], uint8_t rows, uint8_t cols, uint8_t *grid) {
  * @return true nếu dữ liệu SW hợp lệ và trạng thái được gửi; false nếu grid
  *         SW không hợp lệ.
  */
-bool sendCurrentParkingStatus(const ParkingStatus_Status *overrideSlots) {
+bool sendCurrentParkingStatus() {
     static const uint8_t kSlotCount = 10;
     static const uint8_t kGridRows = 3;
     static const uint8_t kGridCols = 4;
@@ -175,8 +177,8 @@ bool sendCurrentParkingStatus(const ParkingStatus_Status *overrideSlots) {
     ParkingStatus_Status slots[kSlotCount] = {ParkingStatus_Status_UNKNOWN};
 
     for (size_t i = 0; i < kSlotCount; ++i) {
-        if (overrideSlots && overrideSlots[i] != ParkingStatus_Status_UNKNOWN) {
-            slots[i] = overrideSlots[i];
+        if (Satus[i] != ParkingStatus_Status_UNKNOWN) {
+            slots[i] = Satus[i];
         } else {
             bool occupied = (ds_o[i].ma_the_uid.length() > 0);
             slots[i] = occupied ? ParkingStatus_Status_OCCUPIED : ParkingStatus_Status_EMPTY;
@@ -202,15 +204,19 @@ bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type
     struct timespec ts;
     uint64_t timestamp_ms = 0;
 
-    if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
-        timestamp_ms = ((uint64_t)ts.tv_sec * 1000ULL) + ((uint64_t)ts.tv_nsec / 1000000ULL);
-        parkingHandler.sendParkingEvent(event_id_counter++, slot_id, /* timestamp_ms, */
-                                        event_type, is_done);
-        return true;
-    } else {
-        Serial.println("Failed to get current time");
-        return false;
-    }
+    parkingHandler.sendParkingEvent(event_id_counter++, slot_id, /* timestamp_ms, */
+                                    event_type, is_done);
+
+    // if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
+    //     timestamp_ms = ((uint64_t)ts.tv_sec * 1000ULL) + ((uint64_t)ts.tv_nsec / 1000000ULL);
+    //     parkingHandler.sendParkingEvent(event_id_counter++, slot_id, /* timestamp_ms, */
+    //                                     event_type, is_done);
+    //     return true;
+    // } else {
+    //     Serial.println("Failed to get current time");
+    //     return false;
+    // }
+    return true;
 }
 
 /**
@@ -222,30 +228,30 @@ bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type
  * @param msg Thông điệp serial chứa giá trị thời gian Unix.
  * @return true khi đồng hồ được cập nhật thành công, false nếu không.
  */
-bool updateUnixTimeFromSerialMessage(const String &msg) {
-    // Kiểm tra an toàn độ dài chuỗi trước khi thao tác pointer
-    if (msg.length() <= 5) {
-        Serial.println("Invalid message length");
-        return false;
-    }
-    const char *time_str_ptr = msg.c_str() + 5;
-    unsigned long unix_time = strtoul(time_str_ptr, NULL, 10);
+// bool updateUnixTimeFromSerialMessage(const String &msg) {
+//     // Kiểm tra an toàn độ dài chuỗi trước khi thao tác pointer
+//     if (msg.length() <= 5) {
+//         Serial.println("Invalid message length");
+//         return false;
+//     }
+//     const char *time_str_ptr = msg.c_str() + 5;
+//     unsigned long unix_time = strtoul(time_str_ptr, NULL, 10);
 
-    if (unix_time > 1000000000UL) {
-        struct timeval tv;
-        tv.tv_sec = (time_t)unix_time;
-        tv.tv_usec = 0;
-        settimeofday(&tv, NULL);
+//     if (unix_time > 1000000000UL) {
+//         struct timeval tv;
+//         tv.tv_sec = (time_t)unix_time;
+//         tv.tv_usec = 0;
+//         settimeofday(&tv, NULL);
 
-        Serial.print("Time updated from serial: ");
-        Serial.println(unix_time);
-        return true;
-    }
+//         Serial.print("Time updated from serial: ");
+//         Serial.println(unix_time);
+//         return true;
+//     }
 
-    Serial.print("Failed to parse Unix time: ");
-    Serial.println(time_str_ptr);
-    return false;
-}
+//     Serial.print("Failed to parse Unix time: ");
+//     Serial.println(time_str_ptr);
+//     return false;
+// }
 // [VQ]
 
 // ==========================================
@@ -677,13 +683,13 @@ void setup() {
 
 void loop() {
     // [VQ]
-    if (Serial2.available() > 0) {
-        String msg = Serial2.readStringUntil('\n');
-        msg.trim();
-        if (msg.startsWith("TIME:")) {
-            updateUnixTimeFromSerialMessage(msg);
-        }
-    }
+    // if (Serial2.available() > 0) {
+    //     String msg = Serial2.readStringUntil('\n');
+    //     msg.trim();
+    //     if (msg.startsWith("TIME:")) {
+    //         updateUnixTimeFromSerialMessage(msg);
+    //     }
+    // }
     parkingHandler.processCommands();
     parkingHandler.loop();
     webManager.loop();
