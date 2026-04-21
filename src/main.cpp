@@ -48,9 +48,9 @@ const uint8_t MANG_IR[10] = {IR_T1_C1, IR_T1_C2, IR_T1_C3, IR_T2_C1, IR_T2_C2,
 MFRC522 rfid(PIN_RFID_SS, PIN_RFID_RST);
 
 struct O_Do {
-    String ma_the_uid;
-    int tang;
-    int cot;
+    String rfid;
+    int row;
+    int col;
 };
 
 O_Do ds_o[10];
@@ -186,7 +186,7 @@ bool sendCurrentParkingStatus() {
         if (Satus[i] != ParkingStatus_Status_UNKNOWN) {
             slots[i] = Satus[i];
         } else {
-            bool occupied = (ds_o[i].ma_the_uid.length() > 0);
+            bool occupied = (ds_o[i].rfid.length() > 0);
             slots[i] = occupied ? ParkingStatus_Status_OCCUPIED : ParkingStatus_Status_EMPTY;
         }
     }
@@ -333,36 +333,35 @@ void dong_cua_chinh() {
 void cap_nhat_tin_hieu_ngoai_vi() {
     // Đọc từ ESP Sensor (UART1)
     while (Serial1.available() > 0) {
-        String tin_nhan = Serial1.readStringUntil('\n');
-        tin_nhan.trim();
+        String mesage = Serial1.readStringUntil('\n');
+        mesage.trim();
 
-        if (tin_nhan.length() > 0) {
+        if (mesage.length() > 0) {
             Serial.print(">>> [UART1 - ESP SENSOR]: ");
-            Serial.println(tin_nhan);
+            Serial.println(mesage);
         }
 
-        if (tin_nhan == "DOORCLOSE") {
+        if (mesage == "DOORCLOSE") {
             cua_da_dong_hoan_toan = true;
-        } else if (tin_nhan == "DOOROPEN") {
+        } else if (mesage == "DOOROPEN") {
             cua_da_mo_hoan_toan = true;
-        } else if (tin_nhan.startsWith("SW") && tin_nhan.length() >= 5) {
-            int t = tin_nhan[2] - '0';
-            int c = tin_nhan[3] - '0';
-            bool trang_thai_sw = (tin_nhan[4] == '1');
-            if (t >= 0 && t <= 3 && c >= 1 && c <= 4) {
-                sw[t][c] = trang_thai_sw;
+        } else if (mesage.startsWith("SW") && mesage.length() >= 5) {
+            int row = mesage[2] - '0';
+            int col = mesage[3] - '0';
+            bool trang_thai_sw = (mesage[4] == '1');
+            if (row >= 0 && row <= 3 && col >= 1 && col <= 4) {
+                sw[row][col] = trang_thai_sw;
             }
         }
         // BỔ SUNG: Bắt tín hiệu cảm biến vị trí thang tời (Ví dụ: IR111, IR211...)
-        else if ((tin_nhan.startsWith("IR") || tin_nhan.startsWith("ir")) &&
-                 tin_nhan.length() >= 5) {
-            int tang_hien_tai = tin_nhan[2] - '0';
-            int cot_hien_tai = tin_nhan[3] - '0';
-            bool trang_thai_vi_tri = (tin_nhan[4] == '1');
+        else if ((mesage.startsWith("IR") || mesage.startsWith("ir")) && mesage.length() >= 5) {
+            int current_row = mesage[2] - '0';
+            int current_column = mesage[3] - '0';
+            bool position_status = (mesage[4] == '1');
 
-            if (tang_hien_tai >= 1 && tang_hien_tai <= 3 && cot_hien_tai >= 1 &&
-                cot_hien_tai <= 4) {
-                cam_bien_vi_tri[tang_hien_tai][cot_hien_tai] = trang_thai_vi_tri;
+            if (current_row >= 1 && current_row <= 3 && current_column >= 1 &&
+                current_column <= 4) {
+                cam_bien_vi_tri[current_row][current_column] = position_status;
             }
         }
     }
@@ -401,15 +400,15 @@ void cap_nhat_tin_hieu_ngoai_vi() {
 // ==========================================
 // 4. THUAT TOAN VET CAN (TRUOT NGANG)
 // ==========================================
-void day_den_sw(int t, int pallet, String huong, int sw_target) {
+void day_den_sw(int row, int pallet, String huong, int sw_target) {
     cap_nhat_tin_hieu_ngoai_vi();
-    if (sw[t][sw_target] == true) {
+    if (sw[row][sw_target] == true) {
         return;
     }
 
-    gui_lenh_motor(String(t) + String(pallet) + huong);
+    gui_lenh_motor(String(row) + String(pallet) + huong);
     unsigned long timeout = millis();
-    while (sw[t][sw_target] == false) {
+    while (sw[row][sw_target] == false) {
         cap_nhat_tin_hieu_ngoai_vi();
         if (millis() - timeout > 15000) {
             gui_lenh_motor("st");
@@ -418,58 +417,58 @@ void day_den_sw(int t, int pallet, String huong, int sw_target) {
         }
         delay(10);
     }
-    gui_lenh_motor(String(t) + String(pallet) + "ST");
+    gui_lenh_motor(String(row) + String(pallet) + "ST");
     gui_lenh_motor("st");
     delay(400);
 }
 
 /**
- * @brief Dọn đường vét cạn cho pallet ngang trên tầng `t`.
+ * @brief Dọn đường vét cạn cho pallet ngang trên tầng `row`.
  *
- * Hàm này di chuyển các pallet ngang trên tầng `t` để giải phóng
+ * Hàm này di chuyển các pallet ngang trên tầng `row` để giải phóng
  * vị trí cột đích `cot_trong_yc` trước khi pallet chính được đưa lên hoặc hạ xuống.
  *
- * @param t Tầng hiện tại của pallet ngang cần dọn đường.
+ * @param row Tầng hiện tại của pallet ngang cần dọn đường.
  * @param cot_trong_yc Cột đích cần giải phóng (1..4).
  *
  * @note
  * - `NP` là lệnh di chuyển sang phải (cột tăng).
  * - `NT` là lệnh di chuyển sang trái (cột giảm).
  */
-void don_duong_vet_can(int t, int cot_trong_yc) {
-    Serial.printf("\n--- DON DUONG T%d CHO COT %d ---\n", t, cot_trong_yc);
+void don_duong_vet_can(int row, int cot_trong_yc) {
+    Serial.printf("\n--- DON DUONG T%d CHO COT %d ---\n", row, cot_trong_yc);
     // [VQ]
     if (cot_trong_yc == 1) {
         // [UI HOOK]
         // Giải phóng cột 1: đẩy pallet ở cột 3 sang phải đến sw 4,
         // rồi pallet cột 2 sang phải đến sw 3, cuối cùng pallet cột 1 sang phải đến sw 2.
-        day_den_sw(t, 3, "NP", 4);
-        day_den_sw(t, 2, "NP", 3);
-        day_den_sw(t, 1, "NP", 2);
+        day_den_sw(row, 3, "NP", 4);
+        day_den_sw(row, 2, "NP", 3);
+        day_den_sw(row, 1, "NP", 2);
     } else if (cot_trong_yc == 2) {
         // [UI HOOK]
         // Giải phóng cột 2: kéo pallet cột 1 sang trái đến sw 1,
         // sau đó đẩy pallet cột 3 sang phải đến sw 4,
         // rồi đẩy pallet cột 2 sang phải đến sw 3.
-        day_den_sw(t, 1, "NT", 1);
-        day_den_sw(t, 3, "NP", 4);
-        day_den_sw(t, 2, "NP", 3);
+        day_den_sw(row, 1, "NT", 1);
+        day_den_sw(row, 3, "NP", 4);
+        day_den_sw(row, 2, "NP", 3);
     } else if (cot_trong_yc == 3) {
         // [UI HOOK]
         // Giải phóng cột 3: kéo pallet cột 1 sang trái đến sw 1,
         // kéo pallet cột 2 sang trái đến sw 2,
         // rồi đẩy pallet cột 3 sang phải đến sw 4.
-        day_den_sw(t, 1, "NT", 1);
-        day_den_sw(t, 2, "NT", 2);
-        day_den_sw(t, 3, "NP", 4);
+        day_den_sw(row, 1, "NT", 1);
+        day_den_sw(row, 2, "NT", 2);
+        day_den_sw(row, 3, "NP", 4);
     } else if (cot_trong_yc == 4) {
         // [UI HOOK]
         // Giải phóng cột 4: kéo pallet cột 1 sang trái đến sw 1,
         // kéo pallet cột 2 sang trái đến sw 2,
         // kéo pallet cột 3 sang trái đến sw 3.
-        day_den_sw(t, 1, "NT", 1);
-        day_den_sw(t, 2, "NT", 2);
-        day_den_sw(t, 3, "NT", 3);
+        day_den_sw(row, 1, "NT", 1);
+        day_den_sw(row, 2, "NT", 2);
+        day_den_sw(row, 3, "NT", 3);
     }
     // [VQ END]
 }
@@ -488,32 +487,32 @@ void cho_nguoi_dung_xac_nhan() {
 }
 
 void gui_xe(String uid) {
-    int muc_tieu = -1;
+    int target = -1;
     for (int i = 0; i < 10; i++) {
-        if (ds_o[i].ma_the_uid == "" && (digitalRead(MANG_IR[i]) == HIGH)) {
-            muc_tieu = i;
+        if (ds_o[i].rfid == "" && (digitalRead(MANG_IR[i]) == HIGH)) {
+            target = i;
             break;
         }
     }
 
-    if (muc_tieu != -1) {
-        int t = ds_o[muc_tieu].tang;
-        int c = ds_o[muc_tieu].cot;
-        ds_o[muc_tieu].ma_the_uid = uid;
+    if (target != -1) {
+        int targetRow = ds_o[target].row;
+        int targetColumn = ds_o[target].col;
+        ds_o[target].rfid = uid;
         // [VQ]
         // [UI HOOK] selected slot identified
-        Satus[muc_tieu] = ParkingStatus_Status_PENDING;
+        Satus[target] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
-        sendCurrentParkingEvent(muc_tieu + 1, ParkingEvent_EventType_IN, false);
+        sendCurrentParkingEvent(target + 1, ParkingEvent_EventType_IN, false);
         // [VQ END]
-        Serial.printf("\n>>> GUI XE VAO T%d-C%d\n", t, c);
+        Serial.printf("\n>>> GUI XE VAO T%d-C%d\n", targetRow, targetColumn);
 
-        if (t > 1) {
-            if (t == 2) {
+        if (targetRow > 1) {
+            if (targetRow == 2) {
                 don_duong_vet_can(2, 4);
             }
-            for (int i = 1; i < t; i++) {
-                don_duong_vet_can(i, c);
+            for (int i = 1; i < targetRow; i++) {
+                don_duong_vet_can(i, targetColumn);
             }
 
             // --- HẠ XUỐNG TẦNG 1 ---
@@ -521,11 +520,11 @@ void gui_xe(String uid) {
             // [VQ]
             // [UI HOOK] animate selected slot moving down to floor 1
             // [VQ END]
-            gui_lenh_motor(String(t) + String(c) + "KD");
+            gui_lenh_motor(String(targetRow) + String(targetColumn) + "KD");
             delay(300);
 
             // Đợi tín hiệu cảm biến vị trí Tầng 1 báo 1
-            while (cam_bien_vi_tri[1][c] == false) {
+            while (cam_bien_vi_tri[1][targetColumn] == false) {
                 cap_nhat_tin_hieu_ngoai_vi();
                 delay(10);
             }
@@ -536,16 +535,16 @@ void gui_xe(String uid) {
         cho_nguoi_dung_xac_nhan();
         dong_cua_chinh();
 
-        if (t > 1) {
+        if (targetRow > 1) {
             // --- KÉO LÊN TẦNG GỐC ---
             // [VQ]
             // [UI HOOK] animate selected slot moving up to target floor
             // [VQ END]
-            gui_lenh_motor(String(t) + String(c) + "KU");
+            gui_lenh_motor(String(targetRow) + String(targetColumn) + "KU");
             delay(300);
 
             // Đợi tín hiệu cảm biến vị trí Tầng đích báo 1
-            while (cam_bien_vi_tri[t][c] == false) {
+            while (cam_bien_vi_tri[targetRow][targetColumn] == false) {
                 cap_nhat_tin_hieu_ngoai_vi();
                 delay(10);
             }
@@ -555,40 +554,40 @@ void gui_xe(String uid) {
         // [VQ]
         // [UI HOOK] complete send event
         sendCurrentParkingStatus();
-        sendCurrentParkingEvent(muc_tieu + 1, ParkingEvent_EventType_IN, true);
+        sendCurrentParkingEvent(target + 1, ParkingEvent_EventType_IN, true);
         // [VQ END]
         beep(1);
     }
 }
 
-void lay_xe(int chi_so_o) {
-    int t = ds_o[chi_so_o].tang;
-    int c = ds_o[chi_so_o].cot;
+void lay_xe(int target) {
+    int targetRow = ds_o[target].row;
+    int targetColumn = ds_o[target].col;
     // [VQ]
     // [UI HOOK] pickup process started
-    Satus[chi_so_o] = ParkingStatus_Status_PROCESSING;
+    Satus[target] = ParkingStatus_Status_PROCESSING;
     sendCurrentParkingStatus();
-    sendCurrentParkingEvent(chi_so_o + 1, ParkingEvent_EventType_OUT, false);
+    sendCurrentParkingEvent(target + 1, ParkingEvent_EventType_OUT, false);
     // [VQ END]
-    Serial.printf("\n>>> LAY XE T%d-C%d\n", t, c);
+    Serial.printf("\n>>> LAY XE T%d-C%d\n", targetRow, targetColumn);
 
-    if (t > 1) {
-        if (t == 2) {
+    if (targetRow > 1) {
+        if (targetRow == 2) {
             don_duong_vet_can(2, 4);
         }
-        for (int i = 1; i < t; i++) {
-            don_duong_vet_can(i, c);
+        for (int i = 1; i < targetRow; i++) {
+            don_duong_vet_can(i, targetColumn);
         }
 
         // --- HẠ PALLET XUỐNG TẦNG 1 ---
         // [VQ]
         // [UI HOOK] animate selected slot moving down to floor 1
         // [VQ END]
-        gui_lenh_motor(String(t) + String(c) + "KD");
+        gui_lenh_motor(String(targetRow) + String(targetColumn) + "KD");
         delay(300);
 
         // Đợi tín hiệu cảm biến vị trí Tầng 1 báo 1
-        while (cam_bien_vi_tri[1][c] == false) {
+        while (cam_bien_vi_tri[1][targetColumn] == false) {
             cap_nhat_tin_hieu_ngoai_vi();
             delay(10);
         }
@@ -599,29 +598,29 @@ void lay_xe(int chi_so_o) {
     cho_nguoi_dung_xac_nhan();
     dong_cua_chinh();
 
-    if (t > 1) {
+    if (targetRow > 1) {
         // --- KÉO PALLET VỀ TẦNG GỐC ---
         // [VQ]
         // [UI HOOK] animate selected slot moving up to root floor
         // [VQ END]
-        gui_lenh_motor(String(t) + String(c) + "KU");
+        gui_lenh_motor(String(targetRow) + String(targetColumn) + "KU");
         delay(300);
 
         // Đợi tín hiệu cảm biến vị trí Tầng đích báo 1
-        while (cam_bien_vi_tri[t][c] == false) {
+        while (cam_bien_vi_tri[targetRow][targetColumn] == false) {
             cap_nhat_tin_hieu_ngoai_vi();
             delay(10);
         }
         gui_lenh_motor("st");
     }
 
-    ds_o[chi_so_o].ma_the_uid = "";
+    ds_o[target].rfid = "";
     Serial.println(">> HOAN TAT LAY XE. O DA TRONG.");
 
     // [VQ]
     resetStatus();
     sendCurrentParkingStatus();
-    sendCurrentParkingEvent(chi_so_o + 1, ParkingEvent_EventType_OUT, true);
+    sendCurrentParkingEvent(target + 1, ParkingEvent_EventType_OUT, true);
     // [UI HOOK] complete pickup event
     // [VQ END]
     beep(2);
@@ -674,20 +673,20 @@ void setup() {
         }
 
         ir_cu[i] = (digitalRead(MANG_IR[i]) == LOW);
-        ds_o[i].ma_the_uid = "";
+        ds_o[i].rfid = "";
     }
 
     for (int i = 0; i < 3; i++) {
-        ds_o[i].tang = 1;
-        ds_o[i].cot = i + 1;
+        ds_o[i].row = 1;
+        ds_o[i].col = i + 1;
     }
     for (int i = 3; i < 6; i++) {
-        ds_o[i].tang = 2;
-        ds_o[i].cot = i - 2;
+        ds_o[i].row = 2;
+        ds_o[i].col = i - 2;
     }
     for (int i = 6; i < 10; i++) {
-        ds_o[i].tang = 3;
-        ds_o[i].cot = i - 5;
+        ds_o[i].row = 3;
+        ds_o[i].col = i - 5;
     }
 
     Serial.println("\n--- HE THONG MASTER FULL READY ---");
@@ -752,7 +751,7 @@ void loop() {
 
     int vi_tri_tim_thay = -1;
     for (int i = 0; i < 10; i++) {
-        if (ds_o[i].ma_the_uid == uid) {
+        if (ds_o[i].rfid == uid) {
             vi_tri_tim_thay = i;
             break;
         }
