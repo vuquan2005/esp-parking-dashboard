@@ -77,6 +77,12 @@ bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type
 
 static ParkingStatus_Status Satus[10] = {ParkingStatus_Status_UNKNOWN};
 
+void resetStatus() {
+    for (size_t i = 0; i < 10; ++i) {
+        Satus[i] = ParkingStatus_Status_UNKNOWN;
+    }
+}
+
 /**
  * @brief Parse cấu hình grid 1D (logic) từ mảng trạng thái cảm biến SW (vật lý).
  *
@@ -434,12 +440,14 @@ void don_duong_vet_can(int t, int cot_trong_yc) {
     Serial.printf("\n--- DON DUONG T%d CHO COT %d ---\n", t, cot_trong_yc);
     // [VQ]
     if (cot_trong_yc == 1) {
+        // [UI HOOK]
         // Giải phóng cột 1: đẩy pallet ở cột 3 sang phải đến sw 4,
         // rồi pallet cột 2 sang phải đến sw 3, cuối cùng pallet cột 1 sang phải đến sw 2.
         day_den_sw(t, 3, "NP", 4);
         day_den_sw(t, 2, "NP", 3);
         day_den_sw(t, 1, "NP", 2);
     } else if (cot_trong_yc == 2) {
+        // [UI HOOK]
         // Giải phóng cột 2: kéo pallet cột 1 sang trái đến sw 1,
         // sau đó đẩy pallet cột 3 sang phải đến sw 4,
         // rồi đẩy pallet cột 2 sang phải đến sw 3.
@@ -447,6 +455,7 @@ void don_duong_vet_can(int t, int cot_trong_yc) {
         day_den_sw(t, 3, "NP", 4);
         day_den_sw(t, 2, "NP", 3);
     } else if (cot_trong_yc == 3) {
+        // [UI HOOK]
         // Giải phóng cột 3: kéo pallet cột 1 sang trái đến sw 1,
         // kéo pallet cột 2 sang trái đến sw 2,
         // rồi đẩy pallet cột 3 sang phải đến sw 4.
@@ -454,6 +463,7 @@ void don_duong_vet_can(int t, int cot_trong_yc) {
         day_den_sw(t, 2, "NT", 2);
         day_den_sw(t, 3, "NP", 4);
     } else if (cot_trong_yc == 4) {
+        // [UI HOOK]
         // Giải phóng cột 4: kéo pallet cột 1 sang trái đến sw 1,
         // kéo pallet cột 2 sang trái đến sw 2,
         // kéo pallet cột 3 sang trái đến sw 3.
@@ -491,8 +501,10 @@ void gui_xe(String uid) {
         int c = ds_o[muc_tieu].cot;
         ds_o[muc_tieu].ma_the_uid = uid;
         // [VQ]
-        // [UI HOOK] selected slot identified; prepare parking_event.event_type =
-        // ParkingEvent_EventType_IN and mark target slot_id = muc_tieu + 1 as PROCESSING/PENDING
+        // [UI HOOK] selected slot identified
+        Satus[muc_tieu] = ParkingStatus_Status_PENDING;
+        sendCurrentParkingStatus();
+        sendCurrentParkingEvent(muc_tieu + 1, ParkingEvent_EventType_IN, false);
         // [VQ END]
         Serial.printf("\n>>> GUI XE VAO T%d-C%d\n", t, c);
 
@@ -541,10 +553,10 @@ void gui_xe(String uid) {
         }
 
         // [VQ]
+        // [UI HOOK] complete send event
         sendCurrentParkingStatus();
         sendCurrentParkingEvent(muc_tieu + 1, ParkingEvent_EventType_IN, true);
-        // [UI HOOK] complete send event; set parking_event.event_type = ParkingEvent_EventType_IN
-        // and update slot state to OCCUPIED on UI [VQ END]
+        // [VQ END]
         beep(1);
     }
 }
@@ -553,8 +565,10 @@ void lay_xe(int chi_so_o) {
     int t = ds_o[chi_so_o].tang;
     int c = ds_o[chi_so_o].cot;
     // [VQ]
-    // [UI HOOK] pickup process started; prepare parking_event.event_type =
-    // ParkingEvent_EventType_OUT and show slot_id = chi_so_o + 1 as PROCESSING
+    // [UI HOOK] pickup process started
+    Satus[chi_so_o] = ParkingStatus_Status_PROCESSING;
+    sendCurrentParkingStatus();
+    sendCurrentParkingEvent(chi_so_o + 1, ParkingEvent_EventType_OUT, false);
     // [VQ END]
     Serial.printf("\n>>> LAY XE T%d-C%d\n", t, c);
 
@@ -605,10 +619,11 @@ void lay_xe(int chi_so_o) {
     Serial.println(">> HOAN TAT LAY XE. O DA TRONG.");
 
     // [VQ]
+    resetStatus();
     sendCurrentParkingStatus();
     sendCurrentParkingEvent(chi_so_o + 1, ParkingEvent_EventType_OUT, true);
-    // [UI HOOK] complete pickup event; set parking_event.event_type = ParkingEvent_EventType_OUT
-    // and update slot state to EMPTY on UI [VQ END]
+    // [UI HOOK] complete pickup event
+    // [VQ END]
     beep(2);
 }
 
