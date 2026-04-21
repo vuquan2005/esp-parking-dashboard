@@ -78,7 +78,8 @@ class ParkingHandler {
     void sendParkingEvent(const ParkingEvent &event);
 
     /// Tạo và gửi ParkingEvent với các tham số rời rạc
-    void sendParkingEvent(uint32_t event_id, uint32_t slot_id, uint64_t timestamp,
+    void sendParkingEvent(uint32_t event_id, uint32_t slot_id,
+                          /* uint64_t timestamp, */
                           ParkingEvent_EventType event_type, bool is_done = false);
 
     /// Vòng lặp để kiểm tra scan async

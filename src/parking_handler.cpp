@@ -173,12 +173,13 @@ void ParkingHandler::sendParkingEvent(const ParkingEvent &event) {
     }
 }
 
-void ParkingHandler::sendParkingEvent(uint32_t event_id, uint32_t pallet_id, uint64_t timestamp,
+void ParkingHandler::sendParkingEvent(uint32_t event_id, uint32_t pallet_id,
+                                      /* uint64_t timestamp,*/
                                       ParkingEvent_EventType event_type, bool is_done) {
     ParkingEvent event = ParkingEvent_init_zero;
     event.event_id = event_id;
     event.pallet_id = pallet_id;
-    event.timestamp = timestamp;
+    // event.timestamp = timestamp;
     event.event_type = event_type;
     event.is_done = is_done;
 

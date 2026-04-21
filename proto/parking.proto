@@ -31,7 +31,7 @@ message ParkingStatus {
 message ParkingEvent {
   uint32       event_id     = 1;
   uint32       pallet_id    = 2;
-  uint64       timestamp    = 3; // Unix epoch time in milliseconds
+  // uint64       timestamp    = 3; // Unix epoch time in milliseconds
   EventType    event_type   = 4;
   bool         is_done      = 6;
 
