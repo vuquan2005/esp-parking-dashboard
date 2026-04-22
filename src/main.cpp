@@ -85,6 +85,20 @@ void resetStatus() {
     }
 }
 
+int rowPallet2SlotId(int row, int pallet) {
+    /*
+    Protobuf grid
+    [    1, 2, 3, 4    5, 6, 7, 0    8, 9, 10, 0    ]
+    row 3 (thượng) -> pallet 1,2,3,4
+    row 2 (giữa) -> pallet 1, 2, 3 ,0
+    row 1 (dưới) -> pallet 1, 2, 3, 0
+    */
+    // 4 là offset của row0 dữ liệu gửi đi tức row 1 của hệ thống
+    // (3 - row - 1) * 3
+
+    return 4 + (3 - row - 1) * 3 + pallet;
+}
+
 /**
  * @brief Parse cấu hình grid 1D (logic) từ mảng trạng thái cảm biến SW (vật lý).
  *
@@ -448,40 +462,148 @@ void day_den_sw(int row, int pallet, String huong, int sw_target) {
  */
 void don_duong_vet_can(int row, int cot_trong_yc) {
     Serial.printf("\n--- DON DUONG T%d CHO COT %d ---\n", row, cot_trong_yc);
-    // [VQ]
     if (cot_trong_yc == 1) {
+        // [VQ]
         // [UI HOOK]
         // Giải phóng cột 1: đẩy pallet ở cột 3 sang phải đến sw 4,
         // rồi pallet cột 2 sang phải đến sw 3, cuối cùng pallet cột 1 sang phải đến sw 2.
+        // 4 + (3 - row - 1)*3 + x là công thức convert từ tọa độ (row, pallet) sang index của
+        // Satus[] tương ứng với pallet_id
+        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PENDING;
+        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PENDING;
+        sendCurrentParkingStatus();
+        // [VQ END]
+
         day_den_sw(row, 3, "NP", 4);
+
+        // [VQ]
+        Satus[rowPallet2SlotId(row, 4)] = ParkingStatus_Status_UNKNOWN;
+        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        sendCurrentParkingStatus();
+        // [VQ END]
+
         day_den_sw(row, 2, "NP", 3);
+
+        // [VQ]
+        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
+        sendCurrentParkingStatus();
+        // [VQ END]
+
         day_den_sw(row, 1, "NP", 2);
+
+        // [VQ]
+        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        sendCurrentParkingStatus();
+        // [VQ END]
+
     } else if (cot_trong_yc == 2) {
+        // [VQ]
         // [UI HOOK]
         // Giải phóng cột 2: kéo pallet cột 1 sang trái đến sw 1,
         // sau đó đẩy pallet cột 3 sang phải đến sw 4,
         // rồi đẩy pallet cột 2 sang phải đến sw 3.
+        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
+        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PENDING;
+        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PENDING;
+        sendCurrentParkingStatus();
+        // [VQ END]
+
         day_den_sw(row, 1, "NT", 1);
+
+        // [VQ]
+        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        sendCurrentParkingStatus();
+        // [VQ END]
+
         day_den_sw(row, 3, "NP", 4);
+
+        // [VQ]
+        Satus[rowPallet2SlotId(row, 4)] = ParkingStatus_Status_UNKNOWN;
+        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        sendCurrentParkingStatus();
+        // [VQ END]
+
         day_den_sw(row, 2, "NP", 3);
+
+        // [VQ]
+        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        sendCurrentParkingStatus();
+        // [VQ END]
+
     } else if (cot_trong_yc == 3) {
+        // [VQ]
         // [UI HOOK]
         // Giải phóng cột 3: kéo pallet cột 1 sang trái đến sw 1,
         // kéo pallet cột 2 sang trái đến sw 2,
         // rồi đẩy pallet cột 3 sang phải đến sw 4.
+        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
+        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
+        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PENDING;
+        sendCurrentParkingStatus();
+        // [VQ END]
+
         day_den_sw(row, 1, "NT", 1);
+
+        // [VQ]
+        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
+        sendCurrentParkingStatus();
+        // [VQ END]
+
         day_den_sw(row, 2, "NT", 2);
+
+        // [VQ]
+        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        sendCurrentParkingStatus();
+        // [VQ END]
+
         day_den_sw(row, 3, "NP", 4);
+
+        // [VQ]
+        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_UNKNOWN;
+        sendCurrentParkingStatus();
+        // [VQ END]
+
     } else if (cot_trong_yc == 4) {
+        // [VQ]
         // [UI HOOK]
         // Giải phóng cột 4: kéo pallet cột 1 sang trái đến sw 1,
         // kéo pallet cột 2 sang trái đến sw 2,
         // kéo pallet cột 3 sang trái đến sw 3.
+        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
+        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
+        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        sendCurrentParkingStatus();
+        // [VQ END]
+
         day_den_sw(row, 1, "NT", 1);
+
+        // [VQ]
+        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
+        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        sendCurrentParkingStatus();
+        // [VQ END]
+
         day_den_sw(row, 2, "NT", 2);
+
+        // [VQ]
+        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        sendCurrentParkingStatus();
+        // [VQ END]
+
         day_den_sw(row, 3, "NT", 3);
+
+        // [VQ]
+        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_UNKNOWN;
+        sendCurrentParkingStatus();
+        // [VQ END]
     }
-    // [VQ END]
 }
 
 // ==========================================
