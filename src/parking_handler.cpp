@@ -201,7 +201,7 @@ void ParkingHandler::handleBinaryData(const uint8_t *data, size_t len) {
 
     switch (msg.which_payload) {
     case Parking_wifi_scanning_tag:
-        handleWifiScanning();
+        // handleWifiScanning();
         break;
 
     case Parking_wifi_config_tag:

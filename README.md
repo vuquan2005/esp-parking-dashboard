@@ -1,1 +1,1 @@
-usbipd.exe attach --wsl --busid 1-9 --auto-attach > /dev/null 2>&1 &
+usbipd.exe attach --wsl --busid 1-4 --auto-attach > /dev/null 2>&1 &

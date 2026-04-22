@@ -95,7 +95,7 @@ class ParkingHandler {
 
     bool _scanInProgress = false;
     unsigned long _lastStatusMillis = 0;
-    static constexpr unsigned long _statusIntervalMs = 10UL * 1000UL; // 10 giây
+    static constexpr unsigned long _statusIntervalMs = 100UL * 1000UL; // 10 giây
 
     /// Encode và gửi message Parking qua callback
     bool sendParking(const Parking &msg);
