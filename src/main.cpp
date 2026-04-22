@@ -530,7 +530,10 @@ void gui_xe(String uid) {
 
             // [VQ]
             // [UI HOOK] animate selected slot moving down to floor 1
+            Satus[target] = ParkingStatus_Status_PROCESSING;
+            sendCurrentParkingStatus();
             // [VQ END]
+
             gui_lenh_motor(String(targetRow) + String(targetColumn) + "KD");
             delay(300);
 
@@ -547,10 +550,6 @@ void gui_xe(String uid) {
         dong_cua_chinh();
 
         if (targetRow > 1) {
-            // --- KÉO LÊN TẦNG GỐC ---
-            // [VQ]
-            // [UI HOOK] animate selected slot moving up to target floor
-            // [VQ END]
             gui_lenh_motor(String(targetRow) + String(targetColumn) + "KU");
             delay(300);
 
@@ -564,6 +563,7 @@ void gui_xe(String uid) {
 
         // [VQ]
         // [UI HOOK] complete send event
+        resetStatus();
         sendCurrentParkingStatus();
         sendCurrentParkingEvent(target + 1, ParkingEvent_EventType_IN, true);
         // [VQ END]
@@ -593,6 +593,8 @@ void lay_xe(int target) {
         // --- HẠ PALLET XUỐNG TẦNG 1 ---
         // [VQ]
         // [UI HOOK] animate selected slot moving down to floor 1
+        Satus[target] = ParkingStatus_Status_PROCESSING;
+        sendCurrentParkingStatus();
         // [VQ END]
         gui_lenh_motor(String(targetRow) + String(targetColumn) + "KD");
         delay(300);
@@ -611,9 +613,6 @@ void lay_xe(int target) {
 
     if (targetRow > 1) {
         // --- KÉO PALLET VỀ TẦNG GỐC ---
-        // [VQ]
-        // [UI HOOK] animate selected slot moving up to root floor
-        // [VQ END]
         gui_lenh_motor(String(targetRow) + String(targetColumn) + "KU");
         delay(300);
 
@@ -629,10 +628,10 @@ void lay_xe(int target) {
     Serial.println(">> HOAN TAT LAY XE. O DA TRONG.");
 
     // [VQ]
+    // [UI HOOK] complete pickup event
     resetStatus();
     sendCurrentParkingStatus();
     sendCurrentParkingEvent(target + 1, ParkingEvent_EventType_OUT, true);
-    // [UI HOOK] complete pickup event
     // [VQ END]
     beep(2);
 }
