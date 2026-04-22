@@ -86,66 +86,65 @@ void resetStatus() {
 /**
  * @brief Parse cấu hình grid 1D (logic) từ mảng trạng thái cảm biến SW (vật lý).
  *
- * @param sw Mảng 2 chiều lưu trạng thái công tắc (Tầng 1..3 tương ứng sw[1]..sw[3], Cột 1..4)
+ * @param sw Mảng 2 chiều lưu trạng thái công tắc
  * @param rows Số lượng hàng của grid logic (mặc định 3)
  * @param cols Số lượng cột của grid logic (mặc định 4)
  * @param grid Con trỏ mảng 1 chiều lưu trữ ID của pallet kích thước rows * cols (0 = khoảng trống)
  * @return true nếu map thành công, false nếu dữ liệu cảm biến không hợp lệ
+ *
+ * @example
+ * // 0: false, 1: true
+ * bool sw[4][5] = {
+ *     {0, 0, 0, 0, 0}, // Hàng 0: Không dùng
+ *     {0, 1, 1, 1, 0}, // Hàng 1 (Vật lý)
+ *     {0, 1, 1, 1, 0}, // Hàng 2 (Vật lý)
+ *     {0, 1, 1, 1, 1}  // Hàng 3 (Vật lý)
+ * };
+ *
+ * // Resulting grid (row-major logic order):
+ * // 1 2 3 4 5 6 7 0 8 9 10 0
  */
-bool parseGridFromSW(bool sw[4][5], uint8_t rows, uint8_t cols, uint8_t *grid) {
-    // Bảo vệ: Tránh truy xuất vượt quá kích thước mảng sw[4][5]
-    if (rows > 3 || cols > 4) {
+bool parseGridFromSW(const bool sw[4][5], uint8_t rows, uint8_t cols, uint8_t *grid) {
+    // Bảo vệ: Tránh truy xuất vượt quá kích thước hoặc con trỏ rỗng
+    if (rows == 0 || cols == 0 || rows > 3 || cols > 4 || grid == nullptr) {
         return false;
-    }
-
-    // Tạo mảng tạm để không làm hỏng grid gốc nếu parse thất bại giữa chừng
-    uint8_t temp_grid[rows * cols];
-    for (int i = 0; i < rows * cols; i++) {
-        temp_grid[i] = 0;
+        Serial.println("[Error] Invalid parameters for parseGridFromSW");
     }
 
     uint8_t next_id = 1;
 
-    // Quét từng hàng logic của grid (từ trên xuống dưới: row 0 -> row 2)
-    for (uint8_t row = 0; row < rows; row++) {
+    // --- PHASE 1: Hàng logic 0 (Cao nhất) ---
+    // Hàng trên cùng không có limit switch vật lý, luôn giả định là có đầy pallet.
+    for (uint8_t col = 0; col < cols; col++) {
+        grid[col] = next_id++;
+    }
+
+    // --- PHASE 2: Các hàng logic còn lại ---
+    for (uint8_t row = 1; row < rows; row++) {
         uint8_t zero_count = 0;
 
         // CÔNG THỨC ĐẢO CHIỀU TỌA ĐỘ Y (Mapping Logic -> Vật lý)
-        // Nếu rows = 3: row = 0 (Cao nhất) -> sw_row = 3
-        //               row = 1 (Giữa)     -> sw_row = 2
-        //               row = 2 (Trệt)     -> sw_row = 1
+        // VD rows = 3: row = 1 (Giữa) -> sw_row = 2 | row = 2 (Trệt) -> sw_row = 1
         uint8_t sw_row = rows - row;
 
-        // Quét từng cột (từ trái qua phải)
         for (uint8_t col = 0; col < cols; col++) {
-            // Đọc từ mảng sw (chú ý: cột của sw bắt đầu từ 1, nên phải + 1)
-            bool has_pallet = sw[sw_row][col + 1];
+            uint8_t grid_idx = row * cols + col;
 
-            if (has_pallet) {
-                temp_grid[row * cols + col] = next_id++;
+            // Đọc từ mảng sw (cột của sw bắt đầu từ 1, nên phải + 1)
+            if (sw[sw_row][col + 1]) {
+                grid[grid_idx] = next_id++;
             } else {
-                temp_grid[row * cols + col] = 0;
+                grid[grid_idx] = 0;
                 zero_count++;
             }
         }
 
-        // KIỂM TRA ĐIỀU KIỆN HỢP LỆ (Giữ nguyên tinh thần của hệ thống cũ)
-        if (row == 0) {
-            // Hàng trên cùng (Cao nhất) phải luôn đầy pallet
-            if (zero_count != 0) {
-                return false;
-            }
-        } else {
-            // Các hàng bên dưới phải có đúng 1 khoảng trống để di chuyển
-            if (zero_count != 1) {
-                return false;
-            }
+        // KIỂM TRA ĐIỀU KIỆN HỢP LỆ
+        // Các hàng bên dưới phải có đúng 1 khoảng trống để mâm có thể di chuyển
+        if (zero_count != 1) {
+            Serial.println("[Error] Invalid SW grid, expected exactly one empty slot in row");
+            return false;
         }
-    }
-
-    // Nếu vượt qua toàn bộ bước kiểm tra, gán dữ liệu vào mảng grid gốc
-    for (int i = 0; i < rows * cols; i++) {
-        grid[i] = temp_grid[i];
     }
 
     return true;
