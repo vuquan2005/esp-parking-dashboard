@@ -210,6 +210,8 @@ bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type
     struct timespec ts;
     uint64_t timestamp_ms = 0;
 
+    slot_id = 11 - slot_id;
+
     parkingHandler.sendParkingEvent(event_id_counter++, slot_id, /* timestamp_ms, */
                                     event_type, is_done);
 
