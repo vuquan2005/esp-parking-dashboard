@@ -66,6 +66,8 @@ bool cua_da_mo_hoan_toan = false;
 // ==========================================
 
 // [VQ]
+bool mock_sw[4][5];
+
 WebManager webManager;
 WifiManager wifiManager;
 ParkingHandler parkingHandler(wifiManager);
@@ -169,7 +171,7 @@ bool sendCurrentParkingStatus() {
     static const size_t kPalletGridCount = size_t(kGridRows) * size_t(kGridCols);
 
     uint8_t grid_ids[kPalletGridCount] = {0};
-    bool grid_ok = parseGridFromSW(sw, kGridRows, kGridCols, grid_ids);
+    bool grid_ok = parseGridFromSW(mock_sw, kGridRows, kGridCols, grid_ids);
     if (!grid_ok) {
         Serial.println("[Warning] Invalid SW grid, sending empty pallet_grid");
     }
@@ -421,6 +423,14 @@ void day_den_sw(int row, int pallet, String huong, int sw_target) {
     gui_lenh_motor(String(row) + String(pallet) + "ST");
     gui_lenh_motor("st");
     delay(400);
+    // [VQ]
+    mock_sw[row][sw_target] = true;
+    if (huong == "NP") {
+        mock_sw[row][pallet] = false;
+    } else if (huong == "NT") {
+        mock_sw[row][pallet + 1] = false;
+    }
+    // [VQ END]
 }
 
 /**
