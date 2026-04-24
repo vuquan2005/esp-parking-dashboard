@@ -53,6 +53,11 @@ struct O_Do {
     int col;
 };
 
+// Old field names are preserved through aliases so merged code can use old identifiers
+#define ma_the_uid rfid
+#define tang row
+#define cot col
+
 O_Do ds_o[10];
 bool ir_cu[10];
 bool sw[4][5];
@@ -298,35 +303,35 @@ void dong_cua_chinh() {
 void cap_nhat_tin_hieu_ngoai_vi() {
     // Đọc từ ESP Sensor (UART1)
     while (Serial1.available() > 0) {
-        String mesage = Serial1.readStringUntil('\n');
-        mesage.trim();
+        String tin_nhan = Serial1.readStringUntil('\n');
+        tin_nhan.trim();
 
-        if (mesage.length() > 0) {
-            Serial.print("sendCurrentParkingEvent(target, [UART1 - ESP SENSOR]: ");
-            Serial.println(mesage);
+        if (tin_nhan.length() > 0) {
+            Serial.print(">>> [UART1 - ESP SENSOR]: ");
+            Serial.println(tin_nhan);
         }
 
-        if (mesage == "DOORCLOSE") {
+        if (tin_nhan == "DOORCLOSE") {
             cua_da_dong_hoan_toan = true;
-        } else if (mesage == "DOOROPEN") {
+        } else if (tin_nhan == "DOOROPEN") {
             cua_da_mo_hoan_toan = true;
-        } else if (mesage.startsWith("SW") && mesage.length() >= 5) {
-            int row = mesage[2] - '0';
-            int col = mesage[3] - '0';
-            bool trang_thai_sw = (mesage[4] == '1');
-            if (row >= 0 && row <= 3 && col >= 1 && col <= 4) {
-                sw[row][col] = trang_thai_sw;
+        } else if (tin_nhan.startsWith("SW") && tin_nhan.length() >= 5) {
+            int t = tin_nhan[2] - '0';
+            int c = tin_nhan[3] - '0';
+            bool trang_thai_sw = (tin_nhan[4] == '1');
+            if (t >= 0 && t <= 3 && c >= 1 && c <= 4) {
+                sw[t][c] = trang_thai_sw;
             }
         }
         // BỔ SUNG: Bắt tín hiệu cảm biến vị trí thang tời (Ví dụ: IR111, IR211...)
-        else if ((mesage.startsWith("IR") || mesage.startsWith("ir")) && mesage.length() >= 5) {
-            int current_row = mesage[2] - '0';
-            int current_column = mesage[3] - '0';
-            bool position_status = (mesage[4] == '1');
+        else if ((tin_nhan.startsWith("IR") || tin_nhan.startsWith("ir")) && tin_nhan.length() >= 5) {
+            int tang_hien_tai = tin_nhan[2] - '0';
+            int cot_hien_tai = tin_nhan[3] - '0';
+            bool trang_thai_vi_tri = (tin_nhan[4] == '1');
 
-            if (current_row >= 1 && current_row <= 3 && current_column >= 1 &&
-                current_column <= 4) {
-                cam_bien_vi_tri[current_row][current_column] = position_status;
+            if (tang_hien_tai >= 1 && tang_hien_tai <= 3 && cot_hien_tai >= 1 &&
+                cot_hien_tai <= 4) {
+                cam_bien_vi_tri[tang_hien_tai][cot_hien_tai] = trang_thai_vi_tri;
             }
         }
     }
@@ -569,31 +574,31 @@ void cho_nguoi_dung_xac_nhan() {
 void gui_xe(String uid) {
     int target = -1;
     for (int i = 0; i < 10; i++) {
-        if (ds_o[i].rfid == "" && (digitalRead(MANG_IR[i]) == HIGH)) {
+        if (ds_o[i].ma_the_uid == "" && (digitalRead(MANG_IR[i]) == HIGH)) {
             target = i;
             break;
         }
     }
 
     if (target != -1) {
-        int targetRow = ds_o[target].row;
-        int targetColumn = ds_o[target].col;
-        ds_o[target].rfid = uid;
+        int t = ds_o[target].row;
+        int c = ds_o[target].col;
+        ds_o[target].ma_the_uid = uid;
         // [VQ]
         // [UI HOOK] selected slot identified
         SlotStatus[ODo2SlotIndex(target)] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
         sendCurrentParkingEvent(ODo2SlotIndex(target), ParkingEvent_EventType_IN, false);
         // [VQ END]
-        Serial.printf("\nsendCurrentParkingEvent(target, GUI XE VAO T%d-C%d\n", targetRow,
-                      targetColumn);
+        Serial.printf("\nsendCurrentParkingEvent(target, GUI XE VAO T%d-C%d\n", t,
+                      c);
 
-        if (targetRow > 1) {
-            if (targetRow == 2) {
+        if (t > 1) {
+            if (t == 2) {
                 don_duong_vet_can(2, 4);
             }
-            for (int i = 1; i < targetRow; i++) {
-                don_duong_vet_can(i, targetColumn);
+            for (int i = 1; i < t; i++) {
+                don_duong_vet_can(i, c);
             }
 
             // --- HẠ XUỐNG TẦNG 1 ---
@@ -604,11 +609,11 @@ void gui_xe(String uid) {
             sendCurrentParkingStatus();
             // [VQ END]
 
-            gui_lenh_motor(String(targetRow) + String(targetColumn) + "KD");
+            gui_lenh_motor(String(t) + String(c) + "KD");
             delay(300);
 
             // Đợi tín hiệu cảm biến vị trí Tầng 1 báo 1
-            while (cam_bien_vi_tri[1][targetColumn] == false) {
+            while (cam_bien_vi_tri[1][c] == false) {
                 cap_nhat_tin_hieu_ngoai_vi();
                 delay(10);
             }
@@ -619,12 +624,12 @@ void gui_xe(String uid) {
         cho_nguoi_dung_xac_nhan();
         dong_cua_chinh();
 
-        if (targetRow > 1) {
-            gui_lenh_motor(String(targetRow) + String(targetColumn) + "KU");
+        if (t > 1) {
+            gui_lenh_motor(String(t) + String(c) + "KU");
             delay(300);
 
             // Đợi tín hiệu cảm biến vị trí Tầng đích báo 1
-            while (cam_bien_vi_tri[targetRow][targetColumn] == false) {
+            while (cam_bien_vi_tri[t][c] == false) {
                 cap_nhat_tin_hieu_ngoai_vi();
                 delay(10);
             }
@@ -642,22 +647,22 @@ void gui_xe(String uid) {
 }
 
 void lay_xe(int target) {
-    int targetRow = ds_o[target].row;
-    int targetColumn = ds_o[target].col;
+    int t = ds_o[target].row;
+    int c = ds_o[target].col;
     // [VQ]
     // [UI HOOK] pickup process started
     SlotStatus[ODo2SlotIndex(target)] = ParkingStatus_Status_PROCESSING;
     sendCurrentParkingStatus();
     sendCurrentParkingEvent(ODo2SlotIndex(target), ParkingEvent_EventType_OUT, false);
     // [VQ END]
-    Serial.printf("\nsendCurrentParkingEvent(target, LAY XE T%d-C%d\n", targetRow, targetColumn);
+    Serial.printf("\nsendCurrentParkingEvent(target, LAY XE T%d-C%d\n", t, c);
 
-    if (targetRow > 1) {
-        if (targetRow == 2) {
+    if (t > 1) {
+        if (t == 2) {
             don_duong_vet_can(2, 4);
         }
-        for (int i = 1; i < targetRow; i++) {
-            don_duong_vet_can(i, targetColumn);
+        for (int i = 1; i < t; i++) {
+            don_duong_vet_can(i, c);
         }
 
         // --- HẠ PALLET XUỐNG TẦNG 1 ---
@@ -666,11 +671,11 @@ void lay_xe(int target) {
         SlotStatus[ODo2SlotIndex(target)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
-        gui_lenh_motor(String(targetRow) + String(targetColumn) + "KD");
+        gui_lenh_motor(String(t) + String(c) + "KD");
         delay(300);
 
         // Đợi tín hiệu cảm biến vị trí Tầng 1 báo 1
-        while (cam_bien_vi_tri[1][targetColumn] == false) {
+        while (cam_bien_vi_tri[1][c] == false) {
             cap_nhat_tin_hieu_ngoai_vi();
             delay(10);
         }
@@ -681,20 +686,20 @@ void lay_xe(int target) {
     cho_nguoi_dung_xac_nhan();
     dong_cua_chinh();
 
-    if (targetRow > 1) {
+    if (t > 1) {
         // --- KÉO PALLET VỀ TẦNG GỐC ---
-        gui_lenh_motor(String(targetRow) + String(targetColumn) + "KU");
+        gui_lenh_motor(String(t) + String(c) + "KU");
         delay(300);
 
         // Đợi tín hiệu cảm biến vị trí Tầng đích báo 1
-        while (cam_bien_vi_tri[targetRow][targetColumn] == false) {
+        while (cam_bien_vi_tri[t][c] == false) {
             cap_nhat_tin_hieu_ngoai_vi();
             delay(10);
         }
         gui_lenh_motor("st");
     }
 
-    ds_o[target].rfid = "";
+    ds_o[target].ma_the_uid = "";
     Serial.println(">> HOAN TAT LAY XE. O DA TRONG.");
 
     // [VQ]
@@ -754,20 +759,20 @@ void setup() {
         }
 
         ir_cu[i] = (digitalRead(MANG_IR[i]) == LOW);
-        ds_o[i].rfid = "";
+        ds_o[i].ma_the_uid = "";
     }
 
     for (int i = 0; i < 3; i++) {
-        ds_o[i].row = 1;
-        ds_o[i].col = i + 1;
+        ds_o[i].tang = 1;
+        ds_o[i].cot = i + 1;
     }
     for (int i = 3; i < 6; i++) {
-        ds_o[i].row = 2;
-        ds_o[i].col = i - 2;
+        ds_o[i].tang = 2;
+        ds_o[i].cot = i - 2;
     }
     for (int i = 6; i < 10; i++) {
-        ds_o[i].row = 3;
-        ds_o[i].col = i - 5;
+        ds_o[i].tang = 3;
+        ds_o[i].cot = i - 5;
     }
 
     Serial.println("\n--- HE THONG MASTER FULL READY ---");
@@ -832,7 +837,7 @@ void loop() {
 
     int vi_tri_tim_thay = -1;
     for (int i = 0; i < 10; i++) {
-        if (ds_o[i].rfid == uid) {
+        if (ds_o[i].ma_the_uid == uid) {
             vi_tri_tim_thay = i;
             break;
         }
