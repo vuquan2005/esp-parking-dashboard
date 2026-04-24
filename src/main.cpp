@@ -66,7 +66,7 @@ bool cua_da_mo_hoan_toan = false;
 // ==========================================
 
 // [VQ]
-bool mock_sw[4][5];
+bool mock_sw[4][5] = {{0, 0, 0, 0, 0}, {0, 1, 1, 1, 0}, {0, 1, 1, 1, 0}, {0, 1, 1, 1, 1}};
 
 WebManager webManager;
 WifiManager wifiManager;
@@ -775,7 +775,8 @@ void setup() {
     webManager.setOnBinary(
         [](const uint8_t *data, size_t len) { parkingHandler.enqueueBinary(data, len); });
     webManager.setOnConnect([]() {
-        // parkingHandler.enqueueClientConnected();
+        sendCurrentParkingStatus();
+        parkingHandler.sendStatus();
     });
 
     parkingHandler.begin();
@@ -789,8 +790,8 @@ void setup() {
     ledcAttachPin(PIN_SERVO_CONG, KENH_PWM);
     dung_motor_cong();
 
-    SPI.begin();
-    rfid.PCD_Init();
+    // SPI.begin();
+    // rfid.PCD_Init();
     pinMode(PIN_BUZZER, OUTPUT);
     pinMode(PIN_NUT_XAC_NHAN, INPUT);
 
