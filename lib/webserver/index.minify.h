@@ -4,8 +4,8 @@
 #include <pgmspace.h>
 #include <stdint.h>
 
-const uint32_t build_timestamp = 1777047279;
-const char ETAG_STRING[] = "\"1777047279\"";
+const uint32_t build_timestamp = 1777060553;
+const char ETAG_STRING[] = "\"1777060553\"";
 const uint32_t html_len = 114871;
 const uint8_t html[] PROGMEM = {
     0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x7c, 0xbc, 0xe7, 0xae, 0x23, 0xd9,

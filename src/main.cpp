@@ -79,17 +79,53 @@ void sendCurrentParkingStatus();
 void sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type,
                              bool is_done = false);
 
-static ParkingStatus_Status SlotStatus[10] = {ParkingStatus_Status_UNKNOWN};
-uint32_t Grid[12] = {1, 2, 3, 4, 5, 6, 7, 0, 8, 9, 10, 0};
+/*
+ * // 0: false, 1: true
+ * bool sw[4][5] = {
+ *     {0, 0, 0, 0, 0}, // Hàng 0: Không dùng
+ *     {0, 1, 1, 1, 0}, // Hàng 1 (Vật lý)
+ *     {0, 1, 1, 1, 0}, // Hàng 2 (Vật lý)
+ *     {0, 1, 1, 1, 1}  // Hàng 3 (Vật lý)
+ * };
+ *
+ * 1 2 3 4 5 6 7 0 8 9 10 0
+ *
+ * {0, 0, 0, 0, 0},
+ * {0, 1 (8), 1 (9), 1 (10), 0},
+ * {0, 1 (5), 1 (6), 1 (7), 0},
+ * {0, 1 (1), 1 (2), 1 (3), 1 (4)}
+ */
 
+/**
+ * @brief Trạng thái gửi cho từng slot của hệ thống ParkingHandler.
+ */
+static ParkingStatus_Status SlotStatus[10] = {ParkingStatus_Status_UNKNOWN};
+
+/**
+ * @brief Bản đồ 1D của vị trí pallet logic trong lưới (0 = trống).
+ */
+static uint32_t Grid[12] = {1, 2, 3, 4, 5, 6, 7, 0, 8, 9, 10, 0};
+
+/**
+ * @brief Thiết lập lại trạng thái tất cả các slot về UNKNOWN.
+ */
 void resetStatus() {
     for (size_t i = 0; i < 10; ++i) {
         SlotStatus[i] = ParkingStatus_Status_UNKNOWN;
     }
 }
 
-const int ODo2SlotIndexA[11] = {0, 8, 9, 10, 5, 6, 7, 1, 2, 3, 4};
+/**
+ * @brief Bảng chuyển đổi từ ID OĐỏ sang chỉ số slot nội bộ.
+ */
+static const int ODo2SlotIndexA[11] = {0, 8, 9, 10, 5, 6, 7, 1, 2, 3, 4};
 
+/**
+ * @brief Chuyển ID OĐỏ sang chỉ số slot nội bộ (0..9).
+ *
+ * @param ODoId ID OĐỏ (1..10).
+ * @return Chỉ số slot nội bộ tương ứng, hoặc -1 nếu giá trị không hợp lệ.
+ */
 int ODo2SlotIndex(uint32_t ODoId) {
     if (ODoId >= 1 && ODoId <= 10) {
         return ODo2SlotIndexA[ODoId] - 1;
@@ -97,18 +133,25 @@ int ODo2SlotIndex(uint32_t ODoId) {
     return -1; // Invalid ODoId
 }
 
+/**
+ * @brief Chuyển vị trí pallet (hàng, cột logic) thành ID slot.
+ *
+ * @param row Tầng pallet (1 = tầng 1, 2 = tầng 2, 3 = tầng 3).
+ * @param indexInRow Chỉ số pallet trong hàng (1..4, với hàng 1 và 2 chỉ dùng 1..3).
+ * @return ID slot ứng với vị trí pallet, hoặc -1 nếu tham số không hợp lệ.
+ */
 int rowPallet2SlotID(int row, int indexInRow) {
 
     if (row < 1 || row > 3) {
-        Serial.printf("Invalid row: %d\n", row);
+        Serial.printf("[VQ] Invalid row: %d\n", row);
         return -1; // Invalid row
     }
     if (indexInRow < 1 || indexInRow > 4) {
-        Serial.printf("Invalid index: %d\n", indexInRow);
+        Serial.printf("[VQ] Invalid index: %d\n", indexInRow);
         return -1; // Invalid index
     }
     if (row < 3 && indexInRow > 3) {
-        Serial.printf("Invalid index for row %d: %d\n", row, indexInRow);
+        Serial.printf("[VQ] Invalid index for row %d: %d\n", row, indexInRow);
         return -1; // Invalid index for rows 1 and 2
     }
     // Mapping logic:
@@ -119,16 +162,29 @@ int rowPallet2SlotID(int row, int indexInRow) {
     const int number =
         (row == 3) ? indexInRow : (row == 2 ? indexInRow + 4 : (row == 1 ? indexInRow + 7 : 0));
     if (number < 1 || number > 10) {
-        Serial.printf("Invalid slot number: %d\n", number);
+        Serial.printf("[VQ] Invalid slot number: %d\n", number);
         return -1; // Invalid row or index
     }
     return number;
 }
 
+/**
+ * @brief Chuyển vị trí pallet (hàng, cột logic) thành chỉ số slot nội bộ.
+ *
+ * @param row Tầng pallet (1..3).
+ * @param indexInRow Chỉ số pallet trong hàng.
+ * @return Chỉ số slot nội bộ (0..9), hoặc -2 nếu vị trí không hợp lệ.
+ */
 int rowPallet2SlotIndex(int row, int indexInRow) {
     return rowPallet2SlotID(row, indexInRow) - 1;
 }
 
+/**
+ * @brief Tìm chỉ số mảng Grid tương ứng với pallet ID.
+ *
+ * @param PalletId ID pallet cần tìm.
+ * @return Chỉ số mảng Grid, hoặc -1 nếu không tìm thấy.
+ */
 int findGridIndex(int PalletId) {
     for (size_t i = 0; i < 12; ++i) {
         if (Grid[i] == PalletId) {
@@ -139,30 +195,31 @@ int findGridIndex(int PalletId) {
 }
 
 /**
- * @brief Di chuyển pallet trong grid.
+ * @brief Di chuyển pallet trong lưới logic.
  *
- * @param PalletId ID của pallet cần di chuyển.
- * @param direction Hướng di chuyển (1: phải, 2: trái).
+ * @param PalletId ID pallet cần di chuyển.
+ * @param direction Hướng di chuyển (1 = phải, 2 = trái).
+ * @return 0 nếu di chuyển thành công, -1 nếu lỗi chung, -2 nếu ô đích không trống.
  */
 int movePalletInGrid(int PalletId, int direction) {
     int gridIndex = findGridIndex(PalletId);
     if (gridIndex == -1) {
-        Serial.printf("Pallet ID %d not found in grid\n", PalletId);
+        Serial.printf("[VQ] Pallet ID %d not found in grid\n", PalletId);
         return -1; // Pallet not found
     }
     int row = gridIndex / 4; // 0-based row index
     int col = gridIndex % 4; // 0-based column index
 
     if (row == 0) {
-        Serial.printf("Pallet ID %d is on the top row and cannot be moved\n", PalletId);
+        Serial.printf("[VQ] Pallet ID %d is on the top row and cannot be moved\n", PalletId);
         return -1; // Cannot move pallets on the top row
     }
 
     if (direction == 1 && col < 3) { // Move right
         if (Grid[gridIndex + 1] != 0) {
-            Serial.printf(
-                "Cannot move Pallet ID %d to the right because the target position is not empty\n",
-                PalletId);
+            Serial.printf("[VQ] Cannot move Pallet ID %d to the right because the target position "
+                          "is not empty\n",
+                          PalletId);
             return -2; // Target position is not empty
         }
 
@@ -170,40 +227,12 @@ int movePalletInGrid(int PalletId, int direction) {
     } else if (direction == 2 && col > 0) { // Move left
         std::swap(Grid[gridIndex], Grid[gridIndex - 1]);
     } else {
-        Serial.printf("Invalid move for Pallet ID %d in direction %d (row: %d, col: %d)\n",
+        Serial.printf("[VQ] Invalid move for Pallet ID %d in direction %d (row: %d, col: %d)\n",
                       PalletId, direction, row, col);
         return -1;
     }
     return 0;
 }
-
-/**
- * @brief Parse cấu hình grid 1D (logic) từ mảng trạng thái cảm biến SW (vật lý).
- *
- * @param sw Mảng 2 chiều lưu trạng thái công tắc
- * @param rows Số lượng hàng của grid logic (mặc định 3)
- * @param cols Số lượng cột của grid logic (mặc định 4)
- * @param grid Con trỏ mảng 1 chiều lưu trữ ID của pallet kích thước rows * cols (0 = khoảng
- * trống)
- * @return true nếu map thành công, false nếu dữ liệu cảm biến không hợp lệ
- *
- * @example
- * // 0: false, 1: true
- * bool sw[4][5] = {
- *     {0, 0, 0, 0, 0}, // Hàng 0: Không dùng
- *     {0, 1, 1, 1, 0}, // Hàng 1 (Vật lý)
- *     {0, 1, 1, 1, 0}, // Hàng 2 (Vật lý)
- *     {0, 1, 1, 1, 1}  // Hàng 3 (Vật lý)
- * };
- *
- * // Resulting grid (row-major logic order):
- * // 1 2 3 4 5 6 7 0 8 9 10 0
- *
- * {0, 0, 0, 0, 0},
- * {0, 1 (8), 1 (9), 1 (10), 0},
- * {0, 1 (5), 1 (6), 1 (7), 0},
- * {0, 1 (1), 1 (2), 1 (3), 1 (4)}
- */
 
 /**
  * @brief Gửi trạng thái sử dụng chỗ đậu xe hiện tại.
@@ -212,29 +241,19 @@ int movePalletInGrid(int PalletId, int direction) {
  * `ds_o` và gửi thông điệp trạng thái bãi đậu xe qua `parkingHandler`.
  */
 void sendCurrentParkingStatus() {
-
-    // for (size_t i = 0; i < kSlotCount; ++i) {
-    //     if (SlotStatus[i] != ParkingStatus_Status_UNKNOWN) {
-    //         slots[i] = SlotStatus[i];
-    //     } else {
-    //         bool occupied = (ds_o[i].rfid.length() > 0);
-    //         slots[i] = occupied ? ParkingStatus_Status_OCCUPIED : ParkingStatus_Status_EMPTY;
-    //     }
-    // }
-
     // serial debug Grid & SlotStatus
-    Serial.println("\n>> sendCurrentParkingStatus called");
-    Serial.println("Grid: ");
+    Serial.println("[VQ] sendCurrentParkingStatus called");
+    Serial.println("[VQ] Grid:");
     for (size_t i = 0; i < 12; ++i) {
         Serial.print(Grid[i]);
         Serial.print(" ");
-        // foeach 4 new lines
+        // newline every 4 entries
         if ((i + 1) % 4 == 0) {
             Serial.println();
         }
     }
     Serial.println();
-    Serial.print("SlotStatus: ");
+    Serial.print("[VQ] SlotStatus: ");
     for (size_t i = 0; i < 10; ++i) {
         Serial.print(SlotStatus[i]);
         Serial.print(" ");
@@ -244,16 +263,17 @@ void sendCurrentParkingStatus() {
     parkingHandler.sendParkingStatus(Grid, 12, SlotStatus, 10);
 }
 
-// increment event_id_counter when lay_xe() hoặc gui_xe() is called
+/**
+ * @brief Bộ đếm sự kiện dùng để gán event_id cho các thông điệp gửi đi.
+ */
 uint32_t event_id_counter = 1;
 
 /**
- * @brief Gửi một sự kiện đậu xe đến hệ thống phía sau.
+ * @brief Gửi một sự kiện đỗ/nhận xe đến hệ thống phía sau.
  *
- * @param slot_id ID của chỗ đậu xe.
- * @param event_type Loại sự kiện đậu xe.
- * @param is_done True nếu sự kiện đã hoàn thành thành công.
- * @return true khi sự kiện được gửi thành công, false nếu lấy thời gian thất bại.
+ * @param ODoId ID OĐỏ của vị trí xe (cần chuyển về chỉ số slot nội bộ).
+ * @param event_type Loại sự kiện đỗ/nhận xe.
+ * @param is_done True nếu quá trình đã hoàn tất thành công.
  */
 void sendCurrentParkingEvent(uint32_t ODoId, ParkingEvent_EventType event_type, bool is_done) {
     struct timespec ts;
@@ -261,9 +281,9 @@ void sendCurrentParkingEvent(uint32_t ODoId, ParkingEvent_EventType event_type, 
 
     uint32_t slot_id = ODo2SlotIndex(ODoId);
 
-    // debug
-    Serial.printf("\n>> sendCurrentParkingEvent called with slot_id=%d, event_type=%d, is_done=%d "
-                  "(o do=%d)\n",
+    // Debug log
+    Serial.printf("[VQ] sendCurrentParkingEvent called with slot_id=%d, event_type=%d, is_done=%d "
+                  "(ODoId=%d)\n",
                   slot_id, event_type, is_done, ODoId);
 
     uint32_t event_id = event_id_counter;
@@ -274,7 +294,7 @@ void sendCurrentParkingEvent(uint32_t ODoId, ParkingEvent_EventType event_type, 
     parkingHandler.sendParkingEvent(event_id, slot_id, /* timestamp_ms, */
                                     event_type, is_done);
 }
-// [VQ]
+// [VQ END]
 
 // ==========================================
 // 3. HAM TIEN ICH & CONG
