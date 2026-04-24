@@ -227,12 +227,17 @@ bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type
 
     slot_id = 11 - slot_id;
 
-    parkingHandler.sendParkingEvent(event_id_counter++, slot_id, /* timestamp_ms, */
+    uint32_t event_id = event_id_counter;
+    if (is_done) {
+        event_id_counter++;
+    }
+
+    parkingHandler.sendParkingEvent(event_id, slot_id, /* timestamp_ms, */
                                     event_type, is_done);
 
     // if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
     //     timestamp_ms = ((uint64_t)ts.tv_sec * 1000ULL) + ((uint64_t)ts.tv_nsec / 1000000ULL);
-    //     parkingHandler.sendParkingEvent(event_id_counter++, slot_id, /* timestamp_ms, */
+    //     parkingHandler.sendParkingEvent(event_id, slot_id, /* timestamp_ms, */
     //                                     event_type, is_done);
     //     return true;
     // } else {
@@ -790,8 +795,8 @@ void setup() {
     ledcAttachPin(PIN_SERVO_CONG, KENH_PWM);
     dung_motor_cong();
 
-    // SPI.begin();
-    // rfid.PCD_Init();
+    SPI.begin();
+    rfid.PCD_Init();
     pinMode(PIN_BUZZER, OUTPUT);
     pinMode(PIN_NUT_XAC_NHAN, INPUT);
 
