@@ -97,7 +97,7 @@ int ODo2SlotIndex(uint32_t ODoId) {
     return -1; // Invalid ODoId
 }
 
-int rowPallet2SlotNumber(int row, int indexInRow) {
+int rowPallet2SlotID(int row, int indexInRow) {
 
     if (row < 1 || row > 3) {
         Serial.printf("Invalid row: %d\n", row);
@@ -126,10 +126,56 @@ int rowPallet2SlotNumber(int row, int indexInRow) {
 }
 
 int rowPallet2SlotIndex(int row, int indexInRow) {
-    return rowPallet2SlotNumber(row, indexInRow) - 1;
+    return rowPallet2SlotID(row, indexInRow) - 1;
 }
 
-// void moveSlotInGrid(int slotNumber, ) {}
+int findGridIndex(int PalletId) {
+    for (size_t i = 0; i < 12; ++i) {
+        if (Grid[i] == PalletId) {
+            return i;
+        }
+    }
+    return -1; // Not found
+}
+
+/**
+ * @brief Di chuyển pallet trong grid.
+ *
+ * @param PalletId ID của pallet cần di chuyển.
+ * @param direction Hướng di chuyển (1: phải, 2: trái).
+ */
+int movePalletInGrid(int PalletId, int direction) {
+    int gridIndex = findGridIndex(PalletId);
+    if (gridIndex == -1) {
+        Serial.printf("Pallet ID %d not found in grid\n", PalletId);
+        return -1; // Pallet not found
+    }
+    int row = gridIndex / 4; // 0-based row index
+    int col = gridIndex % 4; // 0-based column index
+
+    if (row == 0) {
+        Serial.printf("Pallet ID %d is on the top row and cannot be moved\n", PalletId);
+        return -1; // Cannot move pallets on the top row
+    }
+
+    if (direction == 1 && col < 3) { // Move right
+        if (Grid[gridIndex + 1] != 0) {
+            Serial.printf(
+                "Cannot move Pallet ID %d to the right because the target position is not empty\n",
+                PalletId);
+            return -2; // Target position is not empty
+        }
+
+        std::swap(Grid[gridIndex], Grid[gridIndex + 1]);
+    } else if (direction == 2 && col > 0) { // Move left
+        std::swap(Grid[gridIndex], Grid[gridIndex - 1]);
+    } else {
+        Serial.printf("Invalid move for Pallet ID %d in direction %d (row: %d, col: %d)\n",
+                      PalletId, direction, row, col);
+        return -1;
+    }
+    return 0;
+}
 
 /**
  * @brief Parse cấu hình grid 1D (logic) từ mảng trạng thái cảm biến SW (vật lý).
@@ -324,7 +370,8 @@ void cap_nhat_tin_hieu_ngoai_vi() {
             }
         }
         // BỔ SUNG: Bắt tín hiệu cảm biến vị trí thang tời (Ví dụ: IR111, IR211...)
-        else if ((tin_nhan.startsWith("IR") || tin_nhan.startsWith("ir")) && tin_nhan.length() >= 5) {
+        else if ((tin_nhan.startsWith("IR") || tin_nhan.startsWith("ir")) &&
+                 tin_nhan.length() >= 5) {
             int tang_hien_tai = tin_nhan[2] - '0';
             int cot_hien_tai = tin_nhan[3] - '0';
             bool trang_thai_vi_tri = (tin_nhan[4] == '1');
@@ -391,11 +438,11 @@ void day_den_sw(int row, int pallet, String huong, int sw_target) {
     gui_lenh_motor("st");
     delay(400);
     // [VQ]
-    // mock_sw[row][sw_target] = true;
-    if (huong == "NP") {
-        // mock_sw[row][pallet] = false;
-    } else if (huong == "NT") {
-        // mock_sw[row][pallet + 1] = false;
+    const int target = rowPallet2SlotID(row, pallet);
+    if (huong == "NP") { // Phải
+        movePalletInGrid(target, 1);
+    } else if (huong == "NT") { // Trái
+        movePalletInGrid(target, 2);
     }
     // [VQ END]
 }
@@ -590,8 +637,7 @@ void gui_xe(String uid) {
         sendCurrentParkingStatus();
         sendCurrentParkingEvent(ODo2SlotIndex(target), ParkingEvent_EventType_IN, false);
         // [VQ END]
-        Serial.printf("\nsendCurrentParkingEvent(target, GUI XE VAO T%d-C%d\n", t,
-                      c);
+        Serial.printf("\n>>> GUI XE VAO T%d-C%d\n", t, c);
 
         if (t > 1) {
             if (t == 2) {
@@ -655,7 +701,7 @@ void lay_xe(int target) {
     sendCurrentParkingStatus();
     sendCurrentParkingEvent(ODo2SlotIndex(target), ParkingEvent_EventType_OUT, false);
     // [VQ END]
-    Serial.printf("\nsendCurrentParkingEvent(target, LAY XE T%d-C%d\n", t, c);
+    Serial.printf("\n>>> LAY XE T%d-C%d\n", t, c);
 
     if (t > 1) {
         if (t == 2) {
