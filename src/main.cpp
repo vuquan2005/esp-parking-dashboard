@@ -77,11 +77,11 @@ bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type
                              bool is_done = false);
 // bool updateUnixTimeFromSerialMessage(const String &msg);
 
-static ParkingStatus_Status Satus[10] = {ParkingStatus_Status_UNKNOWN};
+static ParkingStatus_Status Status[10] = {ParkingStatus_Status_UNKNOWN};
 
 void resetStatus() {
     for (size_t i = 0; i < 10; ++i) {
-        Satus[i] = ParkingStatus_Status_UNKNOWN;
+        Status[i] = ParkingStatus_Status_UNKNOWN;
     }
 }
 
@@ -198,8 +198,8 @@ bool sendCurrentParkingStatus() {
     ParkingStatus_Status slots[kSlotCount] = {ParkingStatus_Status_UNKNOWN};
 
     for (size_t i = 0; i < kSlotCount; ++i) {
-        if (Satus[i] != ParkingStatus_Status_UNKNOWN) {
-            slots[i] = Satus[i];
+        if (Status[i] != ParkingStatus_Status_UNKNOWN) {
+            slots[i] = Status[i];
         } else {
             bool occupied = (ds_o[i].rfid.length() > 0);
             slots[i] = occupied ? ParkingStatus_Status_OCCUPIED : ParkingStatus_Status_EMPTY;
@@ -207,6 +207,23 @@ bool sendCurrentParkingStatus() {
     }
 
     parkingHandler.sendParkingStatus(pallet_grid, kPalletGridCount, slots, kSlotCount);
+
+    // In ra dữ liệu SW để debug
+    for (uint8_t r = 0; r < 4; r++) {
+        String rowStr = "SW Row " + String(r) + ": ";
+        for (uint8_t c = 0; c < 5; c++) {
+            rowStr += mock_sw[r][c] ? "1 " : "0 ";
+        }
+        Serial.println(rowStr);
+    }
+
+    // In ra trạng thái gửi đi để debug
+    String statusStr = "Sent ParkingStatus - Slots: ";
+    for (size_t i = 0; i < kSlotCount; ++i) {
+        statusStr += String(slots[i]) + " ";
+    }
+    Serial.println(statusStr);
+
     return grid_ok;
 }
 
@@ -224,6 +241,11 @@ uint32_t event_id_counter = 1;
 bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type, bool is_done) {
     struct timespec ts;
     uint64_t timestamp_ms = 0;
+
+    // debug
+    Serial.printf(
+        "\n>> sendCurrentParkingEvent called with slot_id=%d, event_type=%d, is_done=%d\n", slot_id,
+        event_type, is_done);
 
     slot_id = 11 - slot_id;
 
@@ -325,7 +347,7 @@ void cap_nhat_tin_hieu_ngoai_vi() {
         mesage.trim();
 
         if (mesage.length() > 0) {
-            Serial.print(">>> [UART1 - ESP SENSOR]: ");
+            Serial.print("sendCurrentParkingEvent(target, [UART1 - ESP SENSOR]: ");
             Serial.println(mesage);
         }
 
@@ -439,33 +461,33 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
         // Giải phóng cột 1: đẩy pallet ở cột 3 sang phải đến sw 4,
         // rồi pallet cột 2 sang phải đến sw 3, cuối cùng pallet cột 1 sang phải đến sw 2.
         // 4 + (3 - row - 1)*3 + x là công thức convert từ tọa độ (row, pallet) sang index của
-        // Satus[] tương ứng với pallet_id
-        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
-        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PENDING;
-        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PENDING;
+        // Status[] tương ứng với pallet_id
+        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PENDING;
+        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 3, "NP", 4);
 
         // [VQ]
-        Satus[rowPallet2SlotId(row, 4)] = ParkingStatus_Status_UNKNOWN;
-        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 4)] = ParkingStatus_Status_UNKNOWN;
+        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 2, "NP", 3);
 
         // [VQ]
-        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
-        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 1, "NP", 2);
 
         // [VQ]
-        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
         sendCurrentParkingStatus();
         // [VQ END]
 
@@ -475,32 +497,32 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
         // Giải phóng cột 2: kéo pallet cột 1 sang trái đến sw 1,
         // sau đó đẩy pallet cột 3 sang phải đến sw 4,
         // rồi đẩy pallet cột 2 sang phải đến sw 3.
-        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
-        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PENDING;
-        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PENDING;
+        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PENDING;
+        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 1, "NT", 1);
 
         // [VQ]
-        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
-        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 3, "NP", 4);
 
         // [VQ]
-        Satus[rowPallet2SlotId(row, 4)] = ParkingStatus_Status_UNKNOWN;
-        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 4)] = ParkingStatus_Status_UNKNOWN;
+        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 2, "NP", 3);
 
         // [VQ]
-        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
         sendCurrentParkingStatus();
         // [VQ END]
 
@@ -510,32 +532,32 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
         // Giải phóng cột 3: kéo pallet cột 1 sang trái đến sw 1,
         // kéo pallet cột 2 sang trái đến sw 2,
         // rồi đẩy pallet cột 3 sang phải đến sw 4.
-        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
-        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
-        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PENDING;
+        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 1, "NT", 1);
 
         // [VQ]
-        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
-        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 2, "NT", 2);
 
         // [VQ]
-        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
-        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 3, "NP", 4);
 
         // [VQ]
-        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_UNKNOWN;
+        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_UNKNOWN;
         sendCurrentParkingStatus();
         // [VQ END]
 
@@ -545,33 +567,33 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
         // Giải phóng cột 4: kéo pallet cột 1 sang trái đến sw 1,
         // kéo pallet cột 2 sang trái đến sw 2,
         // kéo pallet cột 3 sang trái đến sw 3.
-        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
-        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
-        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 1, "NT", 1);
 
         // [VQ]
-        Satus[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
-        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
-        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 2, "NT", 2);
 
         // [VQ]
-        Satus[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
-        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 3, "NT", 3);
 
         // [VQ]
-        Satus[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_UNKNOWN;
+        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_UNKNOWN;
         sendCurrentParkingStatus();
         // [VQ END]
     }
@@ -605,11 +627,12 @@ void gui_xe(String uid) {
         ds_o[target].rfid = uid;
         // [VQ]
         // [UI HOOK] selected slot identified
-        Satus[target] = ParkingStatus_Status_PENDING;
+        Status[target] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
         sendCurrentParkingEvent(target, ParkingEvent_EventType_IN, false);
         // [VQ END]
-        Serial.printf("\n>>> GUI XE VAO T%d-C%d\n", targetRow, targetColumn);
+        Serial.printf("\nsendCurrentParkingEvent(target, GUI XE VAO T%d-C%d\n", targetRow,
+                      targetColumn);
 
         if (targetRow > 1) {
             if (targetRow == 2) {
@@ -623,7 +646,7 @@ void gui_xe(String uid) {
 
             // [VQ]
             // [UI HOOK] animate selected slot moving down to floor 1
-            Satus[target] = ParkingStatus_Status_PROCESSING;
+            Status[target] = ParkingStatus_Status_PROCESSING;
             sendCurrentParkingStatus();
             // [VQ END]
 
@@ -669,11 +692,11 @@ void lay_xe(int target) {
     int targetColumn = ds_o[target].col;
     // [VQ]
     // [UI HOOK] pickup process started
-    Satus[target] = ParkingStatus_Status_PROCESSING;
+    Status[target] = ParkingStatus_Status_PROCESSING;
     sendCurrentParkingStatus();
     sendCurrentParkingEvent(target, ParkingEvent_EventType_OUT, false);
     // [VQ END]
-    Serial.printf("\n>>> LAY XE T%d-C%d\n", targetRow, targetColumn);
+    Serial.printf("\nsendCurrentParkingEvent(target, LAY XE T%d-C%d\n", targetRow, targetColumn);
 
     if (targetRow > 1) {
         if (targetRow == 2) {
@@ -686,7 +709,7 @@ void lay_xe(int target) {
         // --- HẠ PALLET XUỐNG TẦNG 1 ---
         // [VQ]
         // [UI HOOK] animate selected slot moving down to floor 1
-        Satus[target] = ParkingStatus_Status_PROCESSING;
+        Status[target] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
         gui_lenh_motor(String(targetRow) + String(targetColumn) + "KD");
@@ -833,7 +856,7 @@ void loop() {
                 cot = i - 5;
             }
 
-            Serial.print(">>> [IR STATUS]: IR_T");
+            Serial.print("sendCurrentParkingEvent(target, [IR STATUS]: IR_T");
             Serial.print(tang);
             Serial.print("_C");
             Serial.print(cot);
