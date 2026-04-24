@@ -246,40 +246,6 @@ bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type
     // }
     return true;
 }
-
-/**
- * @brief Cập nhật đồng hồ thiết bị từ thông điệp thời gian qua serial.
- *
- * Thông điệp đầu vào được kỳ vọng bắt đầu bằng "TIME:" theo sau là giá trị
- * Unix epoch tính theo giây.
- *
- * @param msg Thông điệp serial chứa giá trị thời gian Unix.
- * @return true khi đồng hồ được cập nhật thành công, false nếu không.
- */
-// bool updateUnixTimeFromSerialMessage(const String &msg) {
-//     // Kiểm tra an toàn độ dài chuỗi trước khi thao tác pointer
-//     if (msg.length() <= 5) {
-//         Serial.println("Invalid message length");
-//         return false;
-//     }
-//     const char *time_str_ptr = msg.c_str() + 5;
-//     unsigned long unix_time = strtoul(time_str_ptr, NULL, 10);
-
-//     if (unix_time > 1000000000UL) {
-//         struct timeval tv;
-//         tv.tv_sec = (time_t)unix_time;
-//         tv.tv_usec = 0;
-//         settimeofday(&tv, NULL);
-
-//         Serial.print("Time updated from serial: ");
-//         Serial.println(unix_time);
-//         return true;
-//     }
-
-//     Serial.print("Failed to parse Unix time: ");
-//     Serial.println(time_str_ptr);
-//     return false;
-// }
 // [VQ]
 
 // ==========================================
@@ -641,7 +607,7 @@ void gui_xe(String uid) {
         // [UI HOOK] selected slot identified
         Satus[target] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
-        sendCurrentParkingEvent(target + 1, ParkingEvent_EventType_IN, false);
+        sendCurrentParkingEvent(target, ParkingEvent_EventType_IN, false);
         // [VQ END]
         Serial.printf("\n>>> GUI XE VAO T%d-C%d\n", targetRow, targetColumn);
 
@@ -692,7 +658,7 @@ void gui_xe(String uid) {
         // [UI HOOK] complete send event
         resetStatus();
         sendCurrentParkingStatus();
-        sendCurrentParkingEvent(target + 1, ParkingEvent_EventType_IN, true);
+        sendCurrentParkingEvent(target, ParkingEvent_EventType_IN, true);
         // [VQ END]
         beep(1);
     }
@@ -705,7 +671,7 @@ void lay_xe(int target) {
     // [UI HOOK] pickup process started
     Satus[target] = ParkingStatus_Status_PROCESSING;
     sendCurrentParkingStatus();
-    sendCurrentParkingEvent(target + 1, ParkingEvent_EventType_OUT, false);
+    sendCurrentParkingEvent(target, ParkingEvent_EventType_OUT, false);
     // [VQ END]
     Serial.printf("\n>>> LAY XE T%d-C%d\n", targetRow, targetColumn);
 
@@ -758,7 +724,7 @@ void lay_xe(int target) {
     // [UI HOOK] complete pickup event
     resetStatus();
     sendCurrentParkingStatus();
-    sendCurrentParkingEvent(target + 1, ParkingEvent_EventType_OUT, true);
+    sendCurrentParkingEvent(target, ParkingEvent_EventType_OUT, true);
     // [VQ END]
     beep(2);
 }
