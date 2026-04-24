@@ -66,8 +66,6 @@ bool cua_da_mo_hoan_toan = false;
 // ==========================================
 
 // [VQ]
-bool mock_sw[4][5] = {{0, 0, 0, 0, 0}, {0, 1, 1, 1, 0}, {0, 1, 1, 1, 0}, {0, 1, 1, 1, 1}};
-
 WebManager webManager;
 WifiManager wifiManager;
 ParkingHandler parkingHandler(wifiManager);
@@ -75,28 +73,44 @@ ParkingHandler parkingHandler(wifiManager);
 bool sendCurrentParkingStatus();
 bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type,
                              bool is_done = false);
-// bool updateUnixTimeFromSerialMessage(const String &msg);
 
-static ParkingStatus_Status Status[10] = {ParkingStatus_Status_UNKNOWN};
+static ParkingStatus_Status SlotStatus[10] = {ParkingStatus_Status_UNKNOWN};
+uint32_t Grid[12] = {1, 2, 3, 4, 5, 6, 7, 0, 8, 9, 10, 0};
 
 void resetStatus() {
     for (size_t i = 0; i < 10; ++i) {
-        Status[i] = ParkingStatus_Status_UNKNOWN;
+        SlotStatus[i] = ParkingStatus_Status_UNKNOWN;
     }
 }
 
-int rowPallet2SlotId(int row, int pallet) {
-    /*
-    Protobuf grid
-    [    1, 2, 3, 4    5, 6, 7, 0    8, 9, 10, 0    ]
-    row 3 (thượng) -> pallet 1,2,3,4
-    row 2 (giữa) -> pallet 1, 2, 3 ,0
-    row 1 (dưới) -> pallet 1, 2, 3, 0
-    */
-    // 4 là offset của row0 dữ liệu gửi đi tức row 1 của hệ thống
-    // (3 - row - 1) * 3
+const int ODo2SlotIndexA[11] = {0, 8, 9, 10, 5, 6, 7, 1, 2, 3, 4};
 
-    return 4 + (3 - row - 1) * 3 + pallet;
+int ODo2SlotIndex(uint32_t ODoId) {
+    if (ODoId >= 1 && ODoId <= 10) {
+        return ODo2SlotIndexA[ODoId] - 1;
+    }
+    return -1; // Invalid ODoId
+}
+
+int rowPallet2SlotIndex(int row, int index) {
+
+    if (row < 1 || row > 3) {
+        return -1; // Invalid row
+    }
+    if (index < 1 || index > 4) {
+        return -1; // Invalid index
+    }
+    // Mapping logic:
+
+    // row 3: 1 2 3 4
+    // row 2: 5 6 7
+    // row 1: 8 9 10
+    const int number = (row == 3) ? index : (row == 2 ? index + 4 : (row == 1 ? index + 7 : 0));
+    const int index = number - 1;
+    if (index < 0 || index >= 9) {
+        return -1; // Invalid row or index
+    }
+    return index;
 }
 
 /**
@@ -105,7 +119,8 @@ int rowPallet2SlotId(int row, int pallet) {
  * @param sw Mảng 2 chiều lưu trạng thái công tắc
  * @param rows Số lượng hàng của grid logic (mặc định 3)
  * @param cols Số lượng cột của grid logic (mặc định 4)
- * @param grid Con trỏ mảng 1 chiều lưu trữ ID của pallet kích thước rows * cols (0 = khoảng trống)
+ * @param grid Con trỏ mảng 1 chiều lưu trữ ID của pallet kích thước rows * cols (0 = khoảng
+ * trống)
  * @return true nếu map thành công, false nếu dữ liệu cảm biến không hợp lệ
  *
  * @example
@@ -119,112 +134,50 @@ int rowPallet2SlotId(int row, int pallet) {
  *
  * // Resulting grid (row-major logic order):
  * // 1 2 3 4 5 6 7 0 8 9 10 0
+ *
+ * {0, 0, 0, 0, 0},
+ * {0, 1 (8), 1 (9), 1 (10), 0},
+ * {0, 1 (5), 1 (6), 1 (7), 0},
+ * {0, 1 (1), 1 (2), 1 (3), 1 (4)}
  */
-bool parseGridFromSW(const bool sw[4][5], uint8_t rows, uint8_t cols, uint8_t *grid) {
-    // Bảo vệ: Tránh truy xuất vượt quá kích thước hoặc con trỏ rỗng
-    if (rows == 0 || cols == 0 || rows > 3 || cols > 4 || grid == nullptr) {
-        return false;
-        Serial.println("[Error] Invalid parameters for parseGridFromSW");
-    }
-
-    uint8_t next_id = 1;
-
-    // --- PHASE 1: Hàng logic 0 (Cao nhất) ---
-    // Hàng trên cùng không có limit switch vật lý, luôn giả định là có đầy pallet.
-    for (uint8_t col = 0; col < cols; col++) {
-        grid[col] = next_id++;
-    }
-
-    // --- PHASE 2: Các hàng logic còn lại ---
-    for (uint8_t row = 1; row < rows; row++) {
-        uint8_t zero_count = 0;
-
-        // CÔNG THỨC ĐẢO CHIỀU TỌA ĐỘ Y (Mapping Logic -> Vật lý)
-        // VD rows = 3: row = 1 (Giữa) -> sw_row = 2 | row = 2 (Trệt) -> sw_row = 1
-        uint8_t sw_row = rows - row;
-
-        for (uint8_t col = 0; col < cols; col++) {
-            uint8_t grid_idx = row * cols + col;
-
-            // Đọc từ mảng sw (cột của sw bắt đầu từ 1, nên phải + 1)
-            if (sw[sw_row][col + 1]) {
-                grid[grid_idx] = next_id++;
-            } else {
-                grid[grid_idx] = 0;
-                zero_count++;
-            }
-        }
-
-        // KIỂM TRA ĐIỀU KIỆN HỢP LỆ
-        // Các hàng bên dưới phải có đúng 1 khoảng trống để mâm có thể di chuyển
-        if (zero_count != 1) {
-            Serial.println("[Error] Invalid SW grid, expected exactly one empty slot in row");
-            return false;
-        }
-    }
-
-    return true;
-}
 
 /**
  * @brief Gửi trạng thái sử dụng chỗ đậu xe hiện tại.
  *
  * Hàm này thu thập thông tin trạng thái chiếm chỗ từ mảng trạng thái cục bộ
  * `ds_o` và gửi thông điệp trạng thái bãi đậu xe qua `parkingHandler`.
- *
- * @param overrideSlots Optional array of slot status values to override the
- *        locally-derived occupancy state. Nếu `nullptr`, trạng thái sẽ được
- *        tính toán từ `ds_o`.
- * @return true nếu dữ liệu SW hợp lệ và trạng thái được gửi; false nếu grid
- *         SW không hợp lệ.
  */
 bool sendCurrentParkingStatus() {
-    static const uint8_t kSlotCount = 10;
-    static const uint8_t kGridRows = 3;
-    static const uint8_t kGridCols = 4;
-    static const size_t kPalletGridCount = size_t(kGridRows) * size_t(kGridCols);
 
-    uint8_t grid_ids[kPalletGridCount] = {0};
-    bool grid_ok = parseGridFromSW(mock_sw, kGridRows, kGridCols, grid_ids);
-    if (!grid_ok) {
-        Serial.println("[Warning] Invalid SW grid, sending empty pallet_grid");
-    }
+    // for (size_t i = 0; i < kSlotCount; ++i) {
+    //     if (SlotStatus[i] != ParkingStatus_Status_UNKNOWN) {
+    //         slots[i] = SlotStatus[i];
+    //     } else {
+    //         bool occupied = (ds_o[i].rfid.length() > 0);
+    //         slots[i] = occupied ? ParkingStatus_Status_OCCUPIED : ParkingStatus_Status_EMPTY;
+    //     }
+    // }
 
-    uint32_t pallet_grid[kPalletGridCount] = {0};
-    for (size_t i = 0; i < kPalletGridCount; ++i) {
-        pallet_grid[i] = grid_ids[i];
-    }
-
-    ParkingStatus_Status slots[kSlotCount] = {ParkingStatus_Status_UNKNOWN};
-
-    for (size_t i = 0; i < kSlotCount; ++i) {
-        if (Status[i] != ParkingStatus_Status_UNKNOWN) {
-            slots[i] = Status[i];
-        } else {
-            bool occupied = (ds_o[i].rfid.length() > 0);
-            slots[i] = occupied ? ParkingStatus_Status_OCCUPIED : ParkingStatus_Status_EMPTY;
+    // serial debug Grid & SlotStatus
+    Serial.println("\n>> sendCurrentParkingStatus called");
+    Serial.println("Grid: ");
+    for (size_t i = 0; i < 12; ++i) {
+        Serial.print(Grid[i]);
+        Serial.print(" ");
+        // foeach 4 new lines
+        if ((i + 1) % 4 == 0) {
+            Serial.println();
         }
     }
-
-    parkingHandler.sendParkingStatus(pallet_grid, kPalletGridCount, slots, kSlotCount);
-
-    // In ra dữ liệu SW để debug
-    for (uint8_t r = 0; r < 4; r++) {
-        String rowStr = "SW Row " + String(r) + ": ";
-        for (uint8_t c = 0; c < 5; c++) {
-            rowStr += mock_sw[r][c] ? "1 " : "0 ";
-        }
-        Serial.println(rowStr);
+    Serial.println();
+    Serial.print("SlotStatus: ");
+    for (size_t i = 0; i < 10; ++i) {
+        Serial.print(SlotStatus[i]);
+        Serial.print(" ");
     }
+    Serial.println();
 
-    // In ra trạng thái gửi đi để debug
-    String statusStr = "Sent ParkingStatus - Slots: ";
-    for (size_t i = 0; i < kSlotCount; ++i) {
-        statusStr += String(slots[i]) + " ";
-    }
-    Serial.println(statusStr);
-
-    return grid_ok;
+    parkingHandler.sendParkingStatus(Grid, 12, SlotStatus, 10);
 }
 
 // increment event_id_counter when lay_xe() hoặc gui_xe() is called
@@ -238,16 +191,16 @@ uint32_t event_id_counter = 1;
  * @param is_done True nếu sự kiện đã hoàn thành thành công.
  * @return true khi sự kiện được gửi thành công, false nếu lấy thời gian thất bại.
  */
-bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type, bool is_done) {
+bool sendCurrentParkingEvent(uint32_t ODoId, ParkingEvent_EventType event_type, bool is_done) {
     struct timespec ts;
     uint64_t timestamp_ms = 0;
 
-    // debug
-    Serial.printf(
-        "\n>> sendCurrentParkingEvent called with slot_id=%d, event_type=%d, is_done=%d\n", slot_id,
-        event_type, is_done);
+    uint32_t slot_id = ODo2SlotIndex(ODoId);
 
-    slot_id = 11 - slot_id;
+    // debug
+    Serial.printf("\n>> sendCurrentParkingEvent called with slot_id=%d, event_type=%d, is_done=%d "
+                  "(o do=%d)\n",
+                  slot_id, event_type, is_done, ODoId);
 
     uint32_t event_id = event_id_counter;
     if (is_done) {
@@ -257,15 +210,6 @@ bool sendCurrentParkingEvent(uint32_t slot_id, ParkingEvent_EventType event_type
     parkingHandler.sendParkingEvent(event_id, slot_id, /* timestamp_ms, */
                                     event_type, is_done);
 
-    // if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
-    //     timestamp_ms = ((uint64_t)ts.tv_sec * 1000ULL) + ((uint64_t)ts.tv_nsec / 1000000ULL);
-    //     parkingHandler.sendParkingEvent(event_id, slot_id, /* timestamp_ms, */
-    //                                     event_type, is_done);
-    //     return true;
-    // } else {
-    //     Serial.println("Failed to get current time");
-    //     return false;
-    // }
     return true;
 }
 // [VQ]
@@ -431,11 +375,11 @@ void day_den_sw(int row, int pallet, String huong, int sw_target) {
     gui_lenh_motor("st");
     delay(400);
     // [VQ]
-    mock_sw[row][sw_target] = true;
+    // mock_sw[row][sw_target] = true;
     if (huong == "NP") {
-        mock_sw[row][pallet] = false;
+        // mock_sw[row][pallet] = false;
     } else if (huong == "NT") {
-        mock_sw[row][pallet + 1] = false;
+        // mock_sw[row][pallet + 1] = false;
     }
     // [VQ END]
 }
@@ -461,33 +405,33 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
         // Giải phóng cột 1: đẩy pallet ở cột 3 sang phải đến sw 4,
         // rồi pallet cột 2 sang phải đến sw 3, cuối cùng pallet cột 1 sang phải đến sw 2.
         // 4 + (3 - row - 1)*3 + x là công thức convert từ tọa độ (row, pallet) sang index của
-        // Status[] tương ứng với pallet_id
-        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
-        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PENDING;
-        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PENDING;
+        // SlotStatus[] tương ứng với pallet_id
+        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_PENDING;
+        SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 3, "NP", 4);
 
         // [VQ]
-        Status[rowPallet2SlotId(row, 4)] = ParkingStatus_Status_UNKNOWN;
-        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 4)] = ParkingStatus_Status_UNKNOWN;
+        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 2, "NP", 3);
 
         // [VQ]
-        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
-        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 1, "NP", 2);
 
         // [VQ]
-        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_UNKNOWN;
         sendCurrentParkingStatus();
         // [VQ END]
 
@@ -497,32 +441,32 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
         // Giải phóng cột 2: kéo pallet cột 1 sang trái đến sw 1,
         // sau đó đẩy pallet cột 3 sang phải đến sw 4,
         // rồi đẩy pallet cột 2 sang phải đến sw 3.
-        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
-        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PENDING;
-        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PENDING;
+        SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PENDING;
+        SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 1, "NT", 1);
 
         // [VQ]
-        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
-        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 3, "NP", 4);
 
         // [VQ]
-        Status[rowPallet2SlotId(row, 4)] = ParkingStatus_Status_UNKNOWN;
-        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 4)] = ParkingStatus_Status_UNKNOWN;
+        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 2, "NP", 3);
 
         // [VQ]
-        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_UNKNOWN;
         sendCurrentParkingStatus();
         // [VQ END]
 
@@ -532,32 +476,32 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
         // Giải phóng cột 3: kéo pallet cột 1 sang trái đến sw 1,
         // kéo pallet cột 2 sang trái đến sw 2,
         // rồi đẩy pallet cột 3 sang phải đến sw 4.
-        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
-        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
-        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PENDING;
+        SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 1, "NT", 1);
 
         // [VQ]
-        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
-        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 2, "NT", 2);
 
         // [VQ]
-        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
-        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 3, "NP", 4);
 
         // [VQ]
-        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_UNKNOWN;
+        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_UNKNOWN;
         sendCurrentParkingStatus();
         // [VQ END]
 
@@ -567,33 +511,33 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
         // Giải phóng cột 4: kéo pallet cột 1 sang trái đến sw 1,
         // kéo pallet cột 2 sang trái đến sw 2,
         // kéo pallet cột 3 sang trái đến sw 3.
-        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_PROCESSING;
-        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
-        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 1, "NT", 1);
 
         // [VQ]
-        Status[rowPallet2SlotId(row, 1)] = ParkingStatus_Status_UNKNOWN;
-        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_PROCESSING;
-        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 2, "NT", 2);
 
         // [VQ]
-        Status[rowPallet2SlotId(row, 2)] = ParkingStatus_Status_UNKNOWN;
-        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
 
         day_den_sw(row, 3, "NT", 3);
 
         // [VQ]
-        Status[rowPallet2SlotId(row, 3)] = ParkingStatus_Status_UNKNOWN;
+        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_UNKNOWN;
         sendCurrentParkingStatus();
         // [VQ END]
     }
@@ -627,9 +571,9 @@ void gui_xe(String uid) {
         ds_o[target].rfid = uid;
         // [VQ]
         // [UI HOOK] selected slot identified
-        Status[target] = ParkingStatus_Status_PENDING;
+        SlotStatus[ODo2SlotIndex(target)] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
-        sendCurrentParkingEvent(target, ParkingEvent_EventType_IN, false);
+        sendCurrentParkingEvent(ODo2SlotIndex(target), ParkingEvent_EventType_IN, false);
         // [VQ END]
         Serial.printf("\nsendCurrentParkingEvent(target, GUI XE VAO T%d-C%d\n", targetRow,
                       targetColumn);
@@ -646,7 +590,7 @@ void gui_xe(String uid) {
 
             // [VQ]
             // [UI HOOK] animate selected slot moving down to floor 1
-            Status[target] = ParkingStatus_Status_PROCESSING;
+            SlotStatus[target] = ParkingStatus_Status_PROCESSING;
             sendCurrentParkingStatus();
             // [VQ END]
 
@@ -692,9 +636,9 @@ void lay_xe(int target) {
     int targetColumn = ds_o[target].col;
     // [VQ]
     // [UI HOOK] pickup process started
-    Status[target] = ParkingStatus_Status_PROCESSING;
+    SlotStatus[ODo2SlotIndex(target)] = ParkingStatus_Status_PROCESSING;
     sendCurrentParkingStatus();
-    sendCurrentParkingEvent(target, ParkingEvent_EventType_OUT, false);
+    sendCurrentParkingEvent(ODo2SlotIndex(target), ParkingEvent_EventType_OUT, false);
     // [VQ END]
     Serial.printf("\nsendCurrentParkingEvent(target, LAY XE T%d-C%d\n", targetRow, targetColumn);
 
@@ -709,7 +653,7 @@ void lay_xe(int target) {
         // --- HẠ PALLET XUỐNG TẦNG 1 ---
         // [VQ]
         // [UI HOOK] animate selected slot moving down to floor 1
-        Status[target] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[ODo2SlotIndex(target)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
         gui_lenh_motor(String(targetRow) + String(targetColumn) + "KD");
@@ -747,7 +691,7 @@ void lay_xe(int target) {
     // [UI HOOK] complete pickup event
     resetStatus();
     sendCurrentParkingStatus();
-    sendCurrentParkingEvent(target, ParkingEvent_EventType_OUT, true);
+    sendCurrentParkingEvent(ODo2SlotIndex(target), ParkingEvent_EventType_OUT, true);
     // [VQ END]
     beep(2);
 }
