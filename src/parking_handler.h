@@ -14,75 +14,139 @@
 #define PARKING_PB_H_MAX_SIZE 1024
 #endif
 
-/// Loại command được đẩy từ async callback vào main loop
+/**
+ * @brief Loại command được đẩy từ async callback vào main loop.
+ */
 enum class CmdType : uint8_t {
-    BINARY_DATA,      // Raw protobuf binary nhận từ WebSocket
-    CLIENT_CONNECTED, // Client mới kết nối → gửi DeviceStatus
-};
-
-/// Payload cho command queue
-/// Chứa raw protobuf binary — decode sẽ xảy ra trên main thread
-struct CmdData {
-    CmdType type;
-    uint8_t buffer[PARKING_PB_H_MAX_SIZE]; // Copy of raw protobuf data
-    size_t len;                            // Actual data length
+    BINARY_DATA,      ///< Raw protobuf binary nhận từ WebSocket
+    CLIENT_CONNECTED, ///< Client mới kết nối → gửi DeviceStatus
 };
 
 /**
- * ParkingHandler - Xử lý encode/decode protobuf
+ * @brief Payload cho command queue.
+ *
+ * Chứa raw protobuf binary — decode sẽ xảy ra trên main thread.
+ */
+struct CmdData {
+    CmdType type;
+    uint8_t buffer[PARKING_PB_H_MAX_SIZE]; ///< Copy of raw protobuf data
+    size_t len;                            ///< Actual data length
+};
+
+/**
+ * @brief ParkingHandler - Xử lý encode/decode protobuf.
  *
  * KHÔNG phụ thuộc vào ESPAsyncWebServer — chỉ nhận/gửi raw binary
- * thông qua std::function callbacks. Thread safety đảm bảo bởi
- * FreeRTOS queue: async thread enqueue, main loop dequeue + process.
+ * thông qua std::function callbacks.
+ * Thread safety đảm bảo bởi FreeRTOS queue: async thread enqueue,
+ * main loop dequeue + process.
  */
 class ParkingHandler {
   public:
     using SendFn = std::function<void(const uint8_t *, size_t)>;
     using ClientCountFn = std::function<size_t()>;
 
+    /**
+     * @brief Construct a new ParkingHandler object.
+     *
+     * @param wifiManager Reference to WifiManager.
+     */
     ParkingHandler(WifiManager &wifiManager);
 
-    /// Khởi tạo command queue
+    /**
+     * @brief Khởi tạo command queue.
+     */
     void begin();
 
-    /// Thiết lập hàm gửi binary (gọi trước begin)
+    /**
+     * @brief Thiết lập hàm gửi binary (gọi trước begin).
+     *
+     * @param fn Callback để gửi raw binary.
+     */
     void setSendFn(SendFn fn);
 
-    /// Thiết lập hàm đếm client (gọi trước begin)
+    /**
+     * @brief Thiết lập hàm đếm client (gọi trước begin).
+     *
+     * @param fn Callback để trả về số lượng client đang kết nối.
+     */
     void setClientCountFn(ClientCountFn fn);
 
-    /// Enqueue raw binary data từ async thread (THREAD-SAFE)
+    /**
+     * @brief Enqueue raw binary data từ async thread.
+     *
+     * THREAD-SAFE.
+     *
+     * @param data Raw protobuf data.
+     * @param len Độ dài dữ liệu.
+     */
     void enqueueBinary(const uint8_t *data, size_t len);
 
-    /// Enqueue client connected event từ async thread (THREAD-SAFE)
+    /**
+     * @brief Enqueue client connected event từ async thread.
+     *
+     * THREAD-SAFE.
+     */
     void enqueueClientConnected();
 
-    /// Xử lý command queue — GỌI TRONG MAIN LOOP
+    /**
+     * @brief Xử lý command queue.
+     *
+     * GỌI TRONG MAIN LOOP.
+     */
     void processCommands();
 
-    /// Gửi DeviceStatus cho tất cả client
+    /**
+     * @brief Gửi DeviceStatus cho tất cả client.
+     */
     void sendDeviceStatus();
 
-    /// Gửi status tổng quát cho client
+    /**
+     * @brief Gửi status tổng quát cho client.
+     */
     void sendStatus();
 
-    /// Gửi ParkingStatus cho tất cả client
+    /**
+     * @brief Gửi ParkingStatus cho tất cả client.
+     *
+     * @param status Parking status message.
+     */
     void sendParkingStatus(const ParkingStatus &status);
 
-    /// Tạo và gửi ParkingStatus từ mảng ParkingStatus_Status
+    /**
+     * @brief Tạo và gửi ParkingStatus từ mảng ParkingStatus_Status.
+     *
+     * @param pallet_grid Mảng pallet grid.
+     * @param pallet_grid_count Số phần tử pallet_grid.
+     * @param slots_array Mảng ParkingStatus_Status.
+     * @param slots_count Số phần tử slots_array.
+     */
     void sendParkingStatus(const uint32_t *pallet_grid = nullptr, size_t pallet_grid_count = 0,
                            const ParkingStatus_Status *slots_array = nullptr,
                            size_t slots_count = 0);
 
-    /// Gửi ParkingEvent cho tất cả client
+    /**
+     * @brief Gửi ParkingEvent cho tất cả client.
+     *
+     * @param event Parking event message.
+     */
     void sendParkingEvent(const ParkingEvent &event);
 
-    /// Tạo và gửi ParkingEvent với các tham số rời rạc
+    /**
+     * @brief Tạo và gửi ParkingEvent với các tham số rời rạc.
+     *
+     * @param event_id ID của event.
+     * @param pallet_id ID của pallet.
+     * @param event_type Loại event.
+     * @param is_done Flag ghi nhận sự kiện hoàn thành.
+     */
     void sendParkingEvent(uint32_t event_id, uint32_t pallet_id,
                           /* uint64_t timestamp, */
                           ParkingEvent_EventType event_type, bool is_done = false);
 
-    /// Vòng lặp để kiểm tra scan async
+    /**
+     * @brief Vòng lặp để kiểm tra scan async.
+     */
     void loop();
 
   private:
