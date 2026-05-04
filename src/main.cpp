@@ -225,6 +225,12 @@ int movePalletInGrid(int PalletId, int direction) {
 
         std::swap(Grid[gridIndex], Grid[gridIndex + 1]);
     } else if (direction == 2 && col > 0) { // Move left
+        if (Grid[gridIndex - 1] != 0) {
+            Serial.printf("[VQ] Cannot move Pallet ID %d to the left because the target position "
+                          "is not empty\n",
+                          PalletId);
+            return -2; // Target position is not empty
+        }
         std::swap(Grid[gridIndex], Grid[gridIndex - 1]);
     } else {
         Serial.printf("[VQ] Invalid move for Pallet ID %d in direction %d (row: %d, col: %d)\n",
