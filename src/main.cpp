@@ -661,7 +661,7 @@ void gui_xe(String uid) {
         // [UI HOOK] selected slot identified
         SlotStatus[ODo2SlotIndex(target)] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
-        sendCurrentParkingEvent(ODo2SlotIndex(target), ParkingEvent_EventType_IN, false);
+        sendCurrentParkingEvent(target, ParkingEvent_EventType_IN, false);
         // [VQ END]
         Serial.printf("\n>>> GUI XE VAO T%d-C%d\n", t, c);
 
@@ -725,7 +725,7 @@ void lay_xe(int target) {
     // [UI HOOK] pickup process started
     SlotStatus[ODo2SlotIndex(target)] = ParkingStatus_Status_PROCESSING;
     sendCurrentParkingStatus();
-    sendCurrentParkingEvent(ODo2SlotIndex(target), ParkingEvent_EventType_OUT, false);
+    sendCurrentParkingEvent(target, ParkingEvent_EventType_OUT, false);
     // [VQ END]
     Serial.printf("\n>>> LAY XE T%d-C%d\n", t, c);
 
@@ -778,7 +778,7 @@ void lay_xe(int target) {
     // [UI HOOK] complete pickup event
     resetStatus();
     sendCurrentParkingStatus();
-    sendCurrentParkingEvent(ODo2SlotIndex(target), ParkingEvent_EventType_OUT, true);
+    sendCurrentParkingEvent(target, ParkingEvent_EventType_OUT, true);
     // [VQ END]
     beep(2);
 }
