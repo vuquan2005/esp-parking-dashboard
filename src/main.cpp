@@ -47,9 +47,13 @@ const uint8_t MANG_IR[10] = {IR_T1_C1, IR_T1_C2, IR_T1_C3, IR_T2_C1, IR_T2_C2,
 // ==========================================
 MFRC522 rfid(PIN_RFID_SS, PIN_RFID_RST);
 
+/// Thông tin một ô pallet logic trong hệ thống.
 struct O_Do {
+    /// UID thẻ RFID gán cho ô này; rỗng nếu ô chưa có xe.
     String rfid;
+    /// Tầng pallet: 1..3.
     int row;
+    /// Cột pallet trong tầng: 1..4 (tầng 1-2 chỉ dùng 1..3).
     int col;
 };
 
@@ -58,11 +62,19 @@ struct O_Do {
 #define tang row
 #define cot col
 
+/// Danh sách 10 ô pallet logic trong hệ thống.
+/// Chỉ số `i` là index nội bộ; không giống pallet ID trực tiếp.
 O_Do ds_o[10];
+
+/// Trạng thái cũ của cảm biến IR vật lý tại mỗi ô.
 bool ir_cu[10];
+
+/// Trạng thái công tắc/điểm ngang dùng để xác nhận di chuyển ngang.
+/// sw[row][target] = true khi pallet đã đạt vị trí ngang mong muốn.
 bool sw[4][5];
 
-// BỔ SUNG: Mảng lưu trạng thái cảm biến vị trí từ UART
+/// Trạng thái cảm biến vị trí dọc/thang nâng từ UART.
+/// cam_bien_vi_tri[tang][cot] = true khi pallet ở đúng vị trí theo tầng và cột.
 bool cam_bien_vi_tri[4][5];
 
 bool cua_da_dong_hoan_toan = false;
@@ -106,32 +118,27 @@ static ParkingStatus_Status SlotStatus[10] = {ParkingStatus_Status_UNKNOWN};
  */
 static uint32_t Grid[12] = {1, 2, 3, 4, 5, 6, 7, 0, 8, 9, 10, 0};
 
+// Forward declarations needed by recalcStatus()
+int rowPallet2SlotID(int row, int indexInRow);
+int rowPallet2SlotIndex(int row, int indexInRow);
+
 /**
- * @brief Thiết lập lại trạng thái tất cả các slot về UNKNOWN.
+ * @brief Tính lại trạng thái OCCUPIED/EMPTY cho tất cả slot
+ *        dựa trên ds_o[i].rfid (nguồn sự thật logic).
  */
-void resetStatus() {
-    for (size_t i = 0; i < 10; ++i) {
-        SlotStatus[i] = ParkingStatus_Status_UNKNOWN;
+void recalcStatus() {
+    for (int i = 0; i < 10; i++) {
+        int idx = rowPallet2SlotIndex(ds_o[i].row, ds_o[i].col);
+        if (idx < 0) continue;
+        SlotStatus[idx] = ds_o[i].rfid.isEmpty()
+            ? ParkingStatus_Status_EMPTY
+            : ParkingStatus_Status_OCCUPIED;
     }
 }
 
 /**
  * @brief Bảng chuyển đổi từ ID ODo sang chỉ số slot nội bộ.
  */
-static const int ODo2SlotIndexA[11] = {0, 8, 9, 10, 5, 6, 7, 1, 2, 3, 4};
-
-/**
- * @brief Chuyển ID ODo sang chỉ số slot nội bộ (0..9).
- *
- * @param ODoId ID ODo (1..10).
- * @return Chỉ số slot nội bộ tương ứng, hoặc -1 nếu giá trị không hợp lệ.
- */
-int ODo2SlotIndex(uint32_t ODoId) {
-    if (ODoId >= 1 && ODoId <= 10) {
-        return ODo2SlotIndexA[ODoId] - 1;
-    }
-    return -1; // Invalid ODoId
-}
 
 /**
  * @brief Chuyển vị trí pallet (hàng, cột logic) thành ID slot.
@@ -277,20 +284,20 @@ uint32_t event_id_counter = 1;
 /**
  * @brief Gửi một sự kiện đỗ/nhận xe đến hệ thống phía sau.
  *
- * @param ODoId ID ODo của vị trí xe (cần chuyển về chỉ số slot nội bộ).
+ * @param pallet_id ID pallet/ODo (1..10).
  * @param event_type Loại sự kiện đỗ/nhận xe.
  * @param is_done True nếu quá trình đã hoàn tất thành công.
  */
-void sendCurrentParkingEvent(uint32_t ODoId, ParkingEvent_EventType event_type, bool is_done) {
-    struct timespec ts;
-    uint64_t timestamp_ms = 0;
-
-    uint32_t pallet_id = ODo2SlotIndex(ODoId);
+void sendCurrentParkingEvent(uint32_t pallet_id, ParkingEvent_EventType event_type, bool is_done) {
+    if (pallet_id < 1 || pallet_id > 10) {
+        Serial.printf("[VQ] Invalid pallet_id=%u passed to sendCurrentParkingEvent\n", pallet_id);
+        return;
+    }
 
     // Debug log
-    Serial.printf("[VQ] sendCurrentParkingEvent called with pallet_id=%d, event_type=%d, is_done=%d "
-                  "(ODoId=%d)\n",
-                  pallet_id, event_type, is_done, ODoId);
+    Serial.printf(
+        "[VQ] sendCurrentParkingEvent called with pallet_id=%d, event_type=%d, is_done=%d\n",
+        pallet_id, event_type, is_done);
 
     uint32_t event_id = event_id_counter;
     if (is_done) {
@@ -656,12 +663,20 @@ void gui_xe(String uid) {
     if (target != -1) {
         int t = ds_o[target].row;
         int c = ds_o[target].col;
+        int pallet_id = rowPallet2SlotID(t, c);
+        int slotIndex = rowPallet2SlotIndex(t, c);
+
+        if (pallet_id < 1 || slotIndex < 0) {
+            Serial.printf("[VQ] Invalid slot mapping for target=%d (t=%d,c=%d)\n", target, t, c);
+            return;
+        }
+
         ds_o[target].ma_the_uid = uid;
         // [VQ]
         // [UI HOOK] selected slot identified
-        SlotStatus[ODo2SlotIndex(target)] = ParkingStatus_Status_PENDING;
+        SlotStatus[slotIndex] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
-        sendCurrentParkingEvent(target, ParkingEvent_EventType_IN, false);
+        sendCurrentParkingEvent(pallet_id, ParkingEvent_EventType_IN, false);
         // [VQ END]
         Serial.printf("\n>>> GUI XE VAO T%d-C%d\n", t, c);
 
@@ -677,7 +692,7 @@ void gui_xe(String uid) {
 
             // [VQ]
             // [UI HOOK] animate selected slot moving down to floor 1
-            SlotStatus[ODo2SlotIndex(target)] = ParkingStatus_Status_PROCESSING;
+            SlotStatus[slotIndex] = ParkingStatus_Status_PROCESSING;
             sendCurrentParkingStatus();
             // [VQ END]
 
@@ -710,9 +725,9 @@ void gui_xe(String uid) {
 
         // [VQ]
         // [UI HOOK] complete send event
-        resetStatus();
+        recalcStatus();
         sendCurrentParkingStatus();
-        sendCurrentParkingEvent(target, ParkingEvent_EventType_IN, true);
+        sendCurrentParkingEvent(pallet_id, ParkingEvent_EventType_IN, true);
         // [VQ END]
         beep(1);
     }
@@ -721,11 +736,19 @@ void gui_xe(String uid) {
 void lay_xe(int target) {
     int t = ds_o[target].row;
     int c = ds_o[target].col;
+    int pallet_id = rowPallet2SlotID(t, c);
+    int slotIndex = rowPallet2SlotIndex(t, c);
+
+    if (pallet_id < 1 || slotIndex < 0) {
+        Serial.printf("[VQ] Invalid slot mapping for target=%d (t=%d,c=%d)\n", target, t, c);
+        return;
+    }
+
     // [VQ]
     // [UI HOOK] pickup process started
-    SlotStatus[ODo2SlotIndex(target)] = ParkingStatus_Status_PROCESSING;
+    SlotStatus[slotIndex] = ParkingStatus_Status_PROCESSING;
     sendCurrentParkingStatus();
-    sendCurrentParkingEvent(target, ParkingEvent_EventType_OUT, false);
+    sendCurrentParkingEvent(pallet_id, ParkingEvent_EventType_OUT, false);
     // [VQ END]
     Serial.printf("\n>>> LAY XE T%d-C%d\n", t, c);
 
@@ -740,7 +763,7 @@ void lay_xe(int target) {
         // --- HẠ PALLET XUỐNG TẦNG 1 ---
         // [VQ]
         // [UI HOOK] animate selected slot moving down to floor 1
-        SlotStatus[ODo2SlotIndex(target)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[slotIndex] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
         // [VQ END]
         gui_lenh_motor(String(t) + String(c) + "KD");
@@ -776,9 +799,9 @@ void lay_xe(int target) {
 
     // [VQ]
     // [UI HOOK] complete pickup event
-    resetStatus();
+    recalcStatus();
     sendCurrentParkingStatus();
-    sendCurrentParkingEvent(target, ParkingEvent_EventType_OUT, true);
+    sendCurrentParkingEvent(pallet_id, ParkingEvent_EventType_OUT, true);
     // [VQ END]
     beep(2);
 }
