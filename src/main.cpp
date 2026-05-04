@@ -129,10 +129,10 @@ int rowPallet2SlotIndex(int row, int indexInRow);
 void recalcStatus() {
     for (int i = 0; i < 10; i++) {
         int idx = rowPallet2SlotIndex(ds_o[i].row, ds_o[i].col);
-        if (idx < 0) continue;
-        SlotStatus[idx] = ds_o[i].rfid.isEmpty()
-            ? ParkingStatus_Status_EMPTY
-            : ParkingStatus_Status_OCCUPIED;
+        if (idx < 0)
+            continue;
+        SlotStatus[idx] =
+            ds_o[i].rfid.isEmpty() ? ParkingStatus_Status_EMPTY : ParkingStatus_Status_OCCUPIED;
     }
 }
 
