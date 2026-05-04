@@ -285,19 +285,19 @@ void sendCurrentParkingEvent(uint32_t ODoId, ParkingEvent_EventType event_type, 
     struct timespec ts;
     uint64_t timestamp_ms = 0;
 
-    uint32_t slot_id = ODo2SlotIndex(ODoId);
+    uint32_t pallet_id = ODo2SlotIndex(ODoId);
 
     // Debug log
-    Serial.printf("[VQ] sendCurrentParkingEvent called with slot_id=%d, event_type=%d, is_done=%d "
+    Serial.printf("[VQ] sendCurrentParkingEvent called with pallet_id=%d, event_type=%d, is_done=%d "
                   "(ODoId=%d)\n",
-                  slot_id, event_type, is_done, ODoId);
+                  pallet_id, event_type, is_done, ODoId);
 
     uint32_t event_id = event_id_counter;
     if (is_done) {
         event_id_counter++;
     }
 
-    parkingHandler.sendParkingEvent(event_id, slot_id, /* timestamp_ms, */
+    parkingHandler.sendParkingEvent(event_id, pallet_id, /* timestamp_ms, */
                                     event_type, is_done);
 }
 // [VQ END]
