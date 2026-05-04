@@ -116,14 +116,14 @@ void resetStatus() {
 }
 
 /**
- * @brief Bảng chuyển đổi từ ID OĐỏ sang chỉ số slot nội bộ.
+ * @brief Bảng chuyển đổi từ ID ODo sang chỉ số slot nội bộ.
  */
 static const int ODo2SlotIndexA[11] = {0, 8, 9, 10, 5, 6, 7, 1, 2, 3, 4};
 
 /**
- * @brief Chuyển ID OĐỏ sang chỉ số slot nội bộ (0..9).
+ * @brief Chuyển ID ODo sang chỉ số slot nội bộ (0..9).
  *
- * @param ODoId ID OĐỏ (1..10).
+ * @param ODoId ID ODo (1..10).
  * @return Chỉ số slot nội bộ tương ứng, hoặc -1 nếu giá trị không hợp lệ.
  */
 int ODo2SlotIndex(uint32_t ODoId) {
@@ -271,7 +271,7 @@ uint32_t event_id_counter = 1;
 /**
  * @brief Gửi một sự kiện đỗ/nhận xe đến hệ thống phía sau.
  *
- * @param ODoId ID OĐỏ của vị trí xe (cần chuyển về chỉ số slot nội bộ).
+ * @param ODoId ID ODo của vị trí xe (cần chuyển về chỉ số slot nội bộ).
  * @param event_type Loại sự kiện đỗ/nhận xe.
  * @param is_done True nếu quá trình đã hoàn tất thành công.
  */
