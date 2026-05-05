@@ -840,6 +840,8 @@ void setup() {
 
     SPI.begin();
     rfid.PCD_Init();
+    Serial.println("--- Kiem tra ket noi RC522 ---");
+    rfid.PCD_DumpVersionToSerial();
     pinMode(PIN_BUZZER, OUTPUT);
     pinMode(PIN_NUT_XAC_NHAN, INPUT);
 
@@ -910,7 +912,7 @@ void loop() {
                 cot = i - 5;
             }
 
-            Serial.print("sendCurrentParkingEvent(target, [IR STATUS]: IR_T");
+            Serial.print(" [IR STATUS]: IR_T");
             Serial.print(tang);
             Serial.print("_C");
             Serial.print(cot);
