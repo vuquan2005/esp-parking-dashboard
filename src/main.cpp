@@ -829,7 +829,7 @@ void setup() {
     Serial.println("--- Kiem tra ket noi RC522 ---");
     rfid.PCD_DumpVersionToSerial();
     pinMode(PIN_BUZZER, OUTPUT);
-    pinMode(PIN_NUT_XAC_NHAN, INPUT);
+    pinMode(PIN_NUT_XAC_NHAN, INPUT_PULLUP);
 
     memset(sw, 0, sizeof(sw));
     memset(cam_bien_vi_tri, 0, sizeof(cam_bien_vi_tri));
