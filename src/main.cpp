@@ -255,23 +255,23 @@ int movePalletInGrid(int PalletId, int direction) {
  */
 void sendCurrentParkingStatus() {
     // serial debug Grid & SlotStatus
-    Serial.println("[VQ] sendCurrentParkingStatus called");
-    Serial.println("[VQ] Grid:");
-    for (size_t i = 0; i < 12; ++i) {
-        Serial.print(Grid[i]);
-        Serial.print(" ");
-        // newline every 4 entries
-        if ((i + 1) % 4 == 0) {
-            Serial.println();
-        }
-    }
-    Serial.println();
-    Serial.print("[VQ] SlotStatus: ");
-    for (size_t i = 0; i < 10; ++i) {
-        Serial.print(SlotStatus[i]);
-        Serial.print(" ");
-    }
-    Serial.println();
+    // Serial.println("[VQ] sendCurrentParkingStatus called");
+    // Serial.println("[VQ] Grid:");
+    // for (size_t i = 0; i < 12; ++i) {
+    //     Serial.print(Grid[i]);
+    //     Serial.print(" ");
+    //     // newline every 4 entries
+    //     if ((i + 1) % 4 == 0) {
+    //         Serial.println();
+    //     }
+    // }
+    // Serial.println();
+    // Serial.print("[VQ] SlotStatus: ");
+    // for (size_t i = 0; i < 10; ++i) {
+    //     Serial.print(SlotStatus[i]);
+    //     Serial.print(" ");
+    // }
+    // Serial.println();
 
     parkingHandler.sendParkingStatus(Grid, 12, SlotStatus, 10);
 }
@@ -295,9 +295,9 @@ void sendCurrentParkingEvent(uint32_t pallet_id, ParkingEvent_EventType event_ty
     }
 
     // Debug log
-    Serial.printf(
-        "[VQ] sendCurrentParkingEvent called with pallet_id=%d, event_type=%d, is_done=%d\n",
-        pallet_id, event_type, is_done);
+    // Serial.printf(
+    //     "[VQ] sendCurrentParkingEvent called with pallet_id=%d, event_type=%d, is_done=%d\n",
+    //     pallet_id, event_type, is_done);
 
     uint32_t event_id = event_id_counter;
     if (is_done) {
