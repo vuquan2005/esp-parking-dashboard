@@ -339,20 +339,20 @@ void cap_nhat_tin_hieu_ngoai_vi();
 
 void mo_cong() {
     Serial.println(">> DANG MO CONG...");
-    cua_da_mo_hoan_toan = false;
+    // cua_da_mo_hoan_toan = false;
 
     dieu_khien_goc_servo(90);
 
-    unsigned long timeout = millis();
-    while (cua_da_mo_hoan_toan == false) {
-        cap_nhat_tin_hieu_ngoai_vi();
-        if (millis() - timeout > 20000) {
-            dung_motor_cong();
-            Serial.println("!!! LOI: CUA KET KHI MO (TIMEOUT)");
-            return;
-        }
-        delay(10);
-    }
+    // unsigned long timeout = millis();
+    // while (cua_da_mo_hoan_toan == false) {
+    //     cap_nhat_tin_hieu_ngoai_vi();
+    //     if (millis() - timeout > 20000) {
+    //         dung_motor_cong();
+    //         Serial.println("!!! LOI: CUA KET KHI MO (TIMEOUT)");
+    //         return;
+    //     }
+    //     delay(10);
+    // }
 
     dung_motor_cong();
     Serial.println(">> CUA DA MO HOAN TOAN.");
@@ -360,20 +360,20 @@ void mo_cong() {
 
 void dong_cua_chinh() {
     Serial.println(">> DANG DONG CUA...");
-    cua_da_dong_hoan_toan = false;
+    // cua_da_dong_hoan_toan = false;
 
     dieu_khien_goc_servo(0);
 
-    unsigned long timeout = millis();
-    while (cua_da_dong_hoan_toan == false) {
-        cap_nhat_tin_hieu_ngoai_vi();
-        if (millis() - timeout > 20000) {
-            dung_motor_cong();
-            Serial.println("!!! LOI: CUA KET KHI DONG (TIMEOUT)");
-            return;
-        }
-        delay(10);
-    }
+    // unsigned long timeout = millis();
+    // while (cua_da_dong_hoan_toan == false) {
+    //     cap_nhat_tin_hieu_ngoai_vi();
+    //     if (millis() - timeout > 20000) {
+    //         dung_motor_cong();
+    //         Serial.println("!!! LOI: CUA KET KHI DONG (TIMEOUT)");
+    //         return;
+    //     }
+    //     delay(10);
+    // }
 
     dung_motor_cong();
     Serial.println(">> CUA DA DONG AN TOAN.");
@@ -663,6 +663,10 @@ void gui_xe(String uid) {
     if (target != -1) {
         int t = ds_o[target].row;
         int c = ds_o[target].col;
+
+        ds_o[target].ma_the_uid = uid;
+        // [VQ]
+        // [UI HOOK] selected slot identified
         int pallet_id = rowPallet2SlotID(t, c);
         int slotIndex = rowPallet2SlotIndex(t, c);
 
@@ -670,10 +674,6 @@ void gui_xe(String uid) {
             Serial.printf("[VQ] Invalid slot mapping for target=%d (t=%d,c=%d)\n", target, t, c);
             return;
         }
-
-        ds_o[target].ma_the_uid = uid;
-        // [VQ]
-        // [UI HOOK] selected slot identified
         SlotStatus[slotIndex] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
         sendCurrentParkingEvent(pallet_id, ParkingEvent_EventType_IN, false);
