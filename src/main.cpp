@@ -810,26 +810,6 @@ void lay_xe(int target) {
 // 6. SETUP & LOOP
 // ==========================================
 void setup() {
-    // [VQ]
-    wifiManager.begin();
-    webManager.begin();
-
-    // Nối ParkingHandler ↔ WebManager bằng callbacks
-    parkingHandler.setSendFn(
-        [](const uint8_t *data, size_t len) { webManager.sendBinary(data, len); });
-    parkingHandler.setClientCountFn([]() -> size_t { return webManager.clientCount(); });
-
-    // WebManager → ParkingHandler: enqueue vào queue (thread-safe)
-    webManager.setOnBinary(
-        [](const uint8_t *data, size_t len) { parkingHandler.enqueueBinary(data, len); });
-    webManager.setOnConnect([]() {
-        sendCurrentParkingStatus();
-        parkingHandler.sendStatus();
-    });
-
-    parkingHandler.begin();
-    // [VQ END]
-
     Serial.begin(115200);
     Serial2.begin(115200, SERIAL_8N1, PIN_UART_RX2, PIN_UART_TX2);
     Serial1.begin(115200, SERIAL_8N1, PIN_UART_RX1, -1);
@@ -839,6 +819,7 @@ void setup() {
     dung_motor_cong();
 
     SPI.begin();
+    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
     rfid.PCD_Init();
     Serial.println("--- Kiem tra ket noi RC522 ---");
     rfid.PCD_DumpVersionToSerial();
@@ -875,6 +856,27 @@ void setup() {
     Serial.println("\n--- HE THONG MASTER FULL READY ---");
     don_duong_vet_can(1, 4);
     don_duong_vet_can(2, 4);
+
+    // [VQ]
+    wifiManager.begin();
+    webManager.begin();
+
+    // Nối ParkingHandler ↔ WebManager bằng callbacks
+    parkingHandler.setSendFn(
+        [](const uint8_t *data, size_t len) { webManager.sendBinary(data, len); });
+    parkingHandler.setClientCountFn([]() -> size_t { return webManager.clientCount(); });
+
+    // WebManager → ParkingHandler: enqueue vào queue (thread-safe)
+    webManager.setOnBinary(
+        [](const uint8_t *data, size_t len) { parkingHandler.enqueueBinary(data, len); });
+    webManager.setOnConnect([]() {
+        sendCurrentParkingStatus();
+        parkingHandler.sendStatus();
+    });
+
+    parkingHandler.begin();
+    // [VQ END]
+
     beep(1);
 }
 
