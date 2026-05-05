@@ -9,7 +9,9 @@ void WifiManager::begin() {
     WifiPrefs prefs = loadPrefs();
 
     // Set WiFi mode
-    WiFi.mode(WIFI_AP_STA);
+    // Disable STA mode and run AP only
+    // WiFi.mode(WIFI_AP_STA);
+    WiFi.mode(WIFI_AP);
 
     const char *pass = prefs.ap_password.length() >= 8 ? prefs.ap_password.c_str() : nullptr;
 

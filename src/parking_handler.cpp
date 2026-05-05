@@ -241,7 +241,7 @@ void ParkingHandler::handleWifiConfig(const WifiConfig &config) {
         prefs.ap_password = config.ap_password;
     }
 
-    // Update STA config if provided
+    // Update STA config if provided (stored but not used because STA is disabled)
     if (strlen(config.sta_ssid) > 0) {
         prefs.sta_ssid = config.sta_ssid;
         prefs.sta_password = config.sta_password;
@@ -256,9 +256,10 @@ void ParkingHandler::handleWifiConfig(const WifiConfig &config) {
         _wifiManager.applyApConfig(prefs);
     }
 
-    // Connect STA if STA SSID provided
+    // STA is disabled, do not connect to STA even if config is provided
     if (strlen(config.sta_ssid) > 0) {
         _wifiManager.connectSta(config.sta_ssid, config.sta_password);
+        Serial.println("[ParkingHandler] STA support disabled; ignoring STA connect request.");
     }
 
     sendDeviceStatus();
