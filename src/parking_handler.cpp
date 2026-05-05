@@ -20,47 +20,20 @@ void ParkingHandler::setClientCountFn(ClientCountFn fn) {
 // ===== Enqueue (gọi từ async thread — THREAD-SAFE) =====
 
 void ParkingHandler::enqueueBinary(const uint8_t *data, size_t len) {
-    if (!_cmdQueue || len > PARKING_PB_H_MAX_SIZE)
-        return;
-
-    CmdData cmd;
-    cmd.type = CmdType::BINARY_DATA;
-    cmd.len = len;
-    memcpy(cmd.buffer, data, len);
-
-    if (xQueueSend(_cmdQueue, &cmd, 0) != pdTRUE) {
-        Serial.println("[ParkingHandler] WARNING: Command queue full, dropping message");
-    }
+    (void)data;
+    (void)len;
+    // Disabled CmdType command enqueueing to remove WifiScanning/ScanResults load.
 }
 
 void ParkingHandler::enqueueClientConnected() {
-    if (!_cmdQueue)
-        return;
-
-    CmdData cmd;
-    cmd.type = CmdType::CLIENT_CONNECTED;
-    cmd.len = 0;
-
-    xQueueSend(_cmdQueue, &cmd, 0);
+    // Disabled client-connected command enqueueing while CmdType logic is commented out.
 }
 
 // ===== Process Commands (gọi trong main loop) =====
 
 void ParkingHandler::processCommands() {
-    if (!_cmdQueue)
-        return;
-
-    CmdData cmd;
-    while (xQueueReceive(_cmdQueue, &cmd, 0) == pdTRUE) {
-        switch (cmd.type) {
-        case CmdType::BINARY_DATA:
-            handleBinaryData(cmd.buffer, cmd.len);
-            break;
-        case CmdType::CLIENT_CONNECTED:
-            sendDeviceStatus();
-            break;
-        }
-    }
+    // Disabled CmdType command processing.
+    return;
 }
 
 // ===== Gửi messages =====
@@ -219,61 +192,12 @@ void ParkingHandler::handleBinaryData(const uint8_t *data, size_t len) {
 }
 
 void ParkingHandler::sendWifiScanResults(int n) {
-    if (n < 0) {
-        Serial.println("[ParkingHandler] Wifi scan failed, returning empty results");
-    } else if (n == 0) {
-        Serial.println("[ParkingHandler] Wifi scan returned no APs");
-    }
-
-    Parking msg = Parking_init_zero;
-    msg.which_payload = Parking_scan_results_tag;
-    ScanResults &results = msg.payload.scan_results;
-
-    int count = (n > 0) ? min(n, 10) : 0;
-    results.access_points_count = count;
-
-    for (int i = 0; i < count; i++) {
-        ScanResults_AP &ap = results.access_points[i];
-        strncpy(ap.ssid, WiFi.SSID(i).c_str(), sizeof(ap.ssid) - 1);
-
-        uint8_t *bssid = WiFi.BSSID(i);
-        if (bssid) {
-            memcpy(ap.bssid, bssid, 6);
-        }
-
-        ap.rssi = WiFi.RSSI(i);
-        ap.channel = WiFi.channel(i);
-        ap.encryption = (ScanResults_WifiAuthMode)WiFi.encryptionType(i);
-    }
-
-    WiFi.scanDelete();
-
-    if (sendParking(msg)) {
-        Serial.printf("[ParkingHandler] ScanResults sent (%d APs)\n", count);
-    }
+    (void)n;
+    Serial.println("[ParkingHandler] ScanResults logic disabled by comment");
 }
 
 void ParkingHandler::handleWifiScanning() {
-    if (_scanInProgress) {
-        Serial.println("[ParkingHandler] WiFi scan already in progress");
-        return;
-    }
-
-    Serial.println("[ParkingHandler] WiFi scan requested (async)");
-
-    int n = WiFi.scanNetworks(true, true); // async, show_hidden
-
-    if (n == WIFI_SCAN_RUNNING) {
-        _scanInProgress = true;
-        Serial.println("[ParkingHandler] WiFi scan started");
-        return;
-    }
-
-    if (n == WIFI_SCAN_FAILED) {
-        Serial.println("[ParkingHandler] WiFi scan failed to start");
-        sendWifiScanResults(WIFI_SCAN_FAILED);
-        return;
-    }
+    Serial.println("[ParkingHandler] WifiScanning logic disabled by comment");
 }
 
 void ParkingHandler::loop() {
@@ -283,20 +207,21 @@ void ParkingHandler::loop() {
         sendStatus();
     }
 
-    if (_scanInProgress) {
-        int n = WiFi.scanComplete();
-        if (n != WIFI_SCAN_RUNNING) {
-            _scanInProgress = false;
-
-            if (n == WIFI_SCAN_FAILED) {
-                Serial.println("[ParkingHandler] WiFi scan failed (async complete)");
-                WiFi.scanDelete();
-                sendWifiScanResults(WIFI_SCAN_FAILED);
-            } else {
-                sendWifiScanResults(n);
-            }
-        }
-    }
+    // Disabled WifiScanning async scan completion handling.
+    // if (_scanInProgress) {
+    //     int n = WiFi.scanComplete();
+    //     if (n != WIFI_SCAN_RUNNING) {
+    //         _scanInProgress = false;
+    //
+    //         if (n == WIFI_SCAN_FAILED) {
+    //             Serial.println("[ParkingHandler] WiFi scan failed (async complete)");
+    //             WiFi.scanDelete();
+    //             sendWifiScanResults(WIFI_SCAN_FAILED);
+    //         } else {
+    //             sendWifiScanResults(n);
+    //         }
+    //     }
+    // }
 }
 
 void ParkingHandler::handleWifiConfig(const WifiConfig &config) {

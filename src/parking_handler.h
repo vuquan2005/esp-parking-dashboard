@@ -17,10 +17,13 @@
 /**
  * @brief Loại command được đẩy từ async callback vào main loop.
  */
-enum class CmdType : uint8_t {
-    BINARY_DATA,      ///< Raw protobuf binary nhận từ WebSocket
-    CLIENT_CONNECTED, ///< Client mới kết nối → gửi DeviceStatus
-};
+// enum class CmdType : uint8_t {
+//     BINARY_DATA,      ///< Raw protobuf binary nhận từ WebSocket
+//     CLIENT_CONNECTED, ///< Client mới kết nối → gửi DeviceStatus
+// };
+using CmdType = uint8_t;
+static constexpr CmdType CMD_TYPE_BINARY_DATA = 0;
+static constexpr CmdType CMD_TYPE_CLIENT_CONNECTED = 1;
 
 /**
  * @brief Payload cho command queue.
