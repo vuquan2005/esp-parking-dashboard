@@ -818,8 +818,13 @@ void setup() {
     ledcAttachPin(PIN_SERVO_CONG, KENH_PWM);
     dung_motor_cong();
 
-    SPI.begin();
-    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+    pinMode(PIN_RFID_RST, OUTPUT);
+    digitalWrite(PIN_RFID_RST, LOW);
+    delay(100);
+    digitalWrite(PIN_RFID_RST, HIGH);
+    delay(100);
+
+    SPI.begin(18, 19, 23, PIN_RFID_SS);
     rfid.PCD_Init();
     Serial.println("--- Kiem tra ket noi RC522 ---");
     rfid.PCD_DumpVersionToSerial();
