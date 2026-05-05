@@ -825,6 +825,7 @@ void setup() {
     delay(100);
 
     SPI.begin(18, 19, 23, PIN_RFID_SS);
+    SPI.setFrequency(1000000);
     rfid.PCD_Init();
     Serial.println("--- Kiem tra ket noi RC522 ---");
     rfid.PCD_DumpVersionToSerial();
@@ -897,6 +898,8 @@ void loop() {
     parkingHandler.processCommands();
     parkingHandler.loop();
     webManager.loop();
+
+    vTaskDelay(pdMS_TO_TICKS(5));
     // [VQ END]
 
     cap_nhat_tin_hieu_ngoai_vi();
@@ -927,10 +930,12 @@ void loop() {
             Serial.println(trang_thai ? "CHẠM (CÓ XE)" : "KO (TRỐNG)");
         }
     }
-
+    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
     if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
+        SPI.endTransaction();
         return;
     }
+    SPI.endTransaction();
 
     String uid = "";
     for (byte i = 0; i < rfid.uid.size; i++) {
