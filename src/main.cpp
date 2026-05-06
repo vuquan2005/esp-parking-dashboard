@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <MFRC522.h>
 #include <SPI.h>
+#include <WiFi.h>
 #include <sys/time.h>
 #include <time.h>
 
@@ -28,19 +29,19 @@ const int KENH_PWM = 0;
 const int TAN_SO_PWM = 50;
 const int DO_PHAN_GIAI = 16;
 
-#define IR_T1_C1 21
-#define IR_T1_C2 13
-#define IR_T1_C3 14
-#define IR_T2_C1 25
-#define IR_T2_C2 26
-#define IR_T2_C3 27
-#define IR_T3_C1 36
-#define IR_T3_C2 39
-#define IR_T3_C3 2
-#define IR_T3_C4 15
+// #define IR_T1_C1 21
+// #define IR_T1_C2 13
+// #define IR_T1_C3 14
+// #define IR_T2_C1 25
+// #define IR_T2_C2 26
+// #define IR_T2_C3 27
+// #define IR_T3_C1 36
+// #define IR_T3_C2 39
+// #define IR_T3_C3 2
+// #define IR_T3_C4 15
 
-const uint8_t MANG_IR[10] = {IR_T1_C1, IR_T1_C2, IR_T1_C3, IR_T2_C1, IR_T2_C2,
-                             IR_T2_C3, IR_T3_C1, IR_T3_C2, IR_T3_C3, IR_T3_C4};
+// const uint8_t MANG_IR[10] = {IR_T1_C1, IR_T1_C2, IR_T1_C3, IR_T2_C1, IR_T2_C2,
+//                              IR_T2_C3, IR_T3_C1, IR_T3_C2, IR_T3_C3, IR_T3_C4};
 
 // ==========================================
 // 2. KHAI BAO BIEN & CAU TRUC
@@ -79,6 +80,9 @@ bool cam_bien_vi_tri[4][5];
 
 bool cua_da_dong_hoan_toan = false;
 bool cua_da_mo_hoan_toan = false;
+
+// RFID consecutive read failure counter.
+int rfidReadFailureCount = 0;
 
 // ==========================================
 
@@ -353,7 +357,7 @@ void mo_cong() {
     //     }
     //     delay(10);
     // }
-
+    delay(1000);
     dung_motor_cong();
     Serial.println(">> CUA DA MO HOAN TOAN.");
 }
@@ -374,7 +378,7 @@ void dong_cua_chinh() {
     //     }
     //     delay(10);
     // }
-
+    delay(1000);
     dung_motor_cong();
     Serial.println(">> CUA DA DONG AN TOAN.");
 }
@@ -645,7 +649,11 @@ void cho_nguoi_dung_xac_nhan() {
     Serial.println(">> DANG CHO BAM NUT XAC NHAN...");
     while (digitalRead(PIN_NUT_XAC_NHAN) == HIGH) {
         delay(50);
+        if (digitalRead(PIN_NUT_XAC_NHAN) == HIGH) {
+            delay(100); // Debounce delay
+        }
     }
+
     Serial.println(">> DA NHAN NUT XAC NHAN!");
     beep(2);
     delay(500);
@@ -654,7 +662,7 @@ void cho_nguoi_dung_xac_nhan() {
 void gui_xe(String uid) {
     int target = -1;
     for (int i = 0; i < 10; i++) {
-        if (ds_o[i].ma_the_uid == "" && (digitalRead(MANG_IR[i]) == HIGH)) {
+        if (ds_o[i].ma_the_uid == "" /* && (digitalRead(MANG_IR[i]) == HIGH)*/) {
             target = i;
             break;
         }
@@ -804,6 +812,8 @@ void lay_xe(int target) {
     sendCurrentParkingEvent(pallet_id, ParkingEvent_EventType_OUT, true);
     // [VQ END]
     beep(2);
+
+    // WiFi.mode(WIFI_OFF);
 }
 
 // ==========================================
@@ -855,16 +865,16 @@ void setup() {
     memset(sw, 0, sizeof(sw));
     memset(cam_bien_vi_tri, 0, sizeof(cam_bien_vi_tri));
 
-    for (int i = 0; i < 10; i++) {
-        if (MANG_IR[i] == 36 || MANG_IR[i] == 39) {
-            pinMode(MANG_IR[i], INPUT);
-        } else {
-            pinMode(MANG_IR[i], INPUT_PULLUP);
-        }
+    // for (int i = 0; i < 10; i++) {
+    //     if (MANG_IR[i] == 36 || MANG_IR[i] == 39) {
+    //         pinMode(MANG_IR[i], INPUT);
+    //     } else {
+    //         pinMode(MANG_IR[i], INPUT_PULLUP);
+    //     }
 
-        ir_cu[i] = (digitalRead(MANG_IR[i]) == LOW);
-        ds_o[i].ma_the_uid = "";
-    }
+    //     ir_cu[i] = (digitalRead(MANG_IR[i]) == LOW);
+    //     ds_o[i].ma_the_uid = "";
+    // }
 
     for (int i = 0; i < 3; i++) {
         ds_o[i].tang = 1;
@@ -887,7 +897,7 @@ void setup() {
 }
 
 void loop() {
-    parkingHandler.processCommands();
+    // parkingHandler.processCommands();
     parkingHandler.loop();
     webManager.loop();
 
@@ -899,16 +909,28 @@ void loop() {
     // SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
     if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
         // SPI.endTransaction();
+        rfidReadFailureCount++;
+        if (rfidReadFailureCount >= 100) {
+            Serial.print("[VQ] RFID read failed 100 times... ");
+            rfid.PCD_DumpVersionToSerial();
+            rfidReadFailureCount = 0;
+            digitalWrite(PIN_RFID_RST, LOW);
+            delay(50);
+            digitalWrite(PIN_RFID_RST, HIGH);
+            delay(50);
+        }
         return;
     }
     // SPI.endTransaction();
 
+    rfidReadFailureCount = 0;
     String uid = "";
     for (byte i = 0; i < rfid.uid.size; i++) {
         uid += String(rfid.uid.uidByte[i] < 0x10 ? "0" : "");
         uid += String(rfid.uid.uidByte[i], HEX);
     }
     uid.toUpperCase();
+    Serial.println("\n--- THE RFID MOI DUOC QUET: " + uid + " ---");
 
     int vi_tri_tim_thay = -1;
     for (int i = 0; i < 10; i++) {
