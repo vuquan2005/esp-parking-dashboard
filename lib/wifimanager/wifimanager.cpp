@@ -1,4 +1,5 @@
 #include "wifimanager.h"
+#include <esp_wifi.h>
 
 WifiManager::WifiManager() {}
 
@@ -24,6 +25,12 @@ void WifiManager::begin() {
         Serial.printf("[WifiManager] AP Network '%s' Started (CH=%d)\n", prefs.ap_ssid.c_str(),
                       channel);
         Serial.printf("[WifiManager] AP IP: %s\n", WiFi.softAPIP().toString().c_str());
+
+        // Reduce AP transmit power and slow down beacon advertisements.
+        if (WiFi.setTxPower(WIFI_POWER_2dBm)) {
+            Serial.println("[WifiManager] AP TX power reduced to 2 dBm.");
+        }
+        setApBeaconInterval(200);
     } else {
         Serial.println("[WifiManager] ERROR: Failed to start AP network.");
     }
@@ -71,8 +78,30 @@ void WifiManager::applyApConfig(const WifiPrefs &prefs) {
 
     if (WiFi.softAP(prefs.ap_ssid.c_str(), pass)) {
         Serial.printf("[WifiManager] AP restarted: SSID='%s'\n", prefs.ap_ssid.c_str());
+
+        if (WiFi.setTxPower(WIFI_POWER_2dBm)) {
+            Serial.println("[WifiManager] AP TX power reduced to 2 dBm.");
+        }
+        setApBeaconInterval(200);
     } else {
         Serial.println("[WifiManager] ERROR: Failed to restart AP!");
+    }
+}
+
+void WifiManager::setApBeaconInterval(uint16_t interval_ms) {
+    wifi_config_t config;
+    esp_err_t err = esp_wifi_get_config(WIFI_IF_AP, &config);
+    if (err != ESP_OK) {
+        Serial.printf("[WifiManager] WARNING: Cannot read AP config (%d)\n", err);
+        return;
+    }
+
+    config.ap.beacon_interval = interval_ms;
+    err = esp_wifi_set_config(WIFI_IF_AP, &config);
+    if (err == ESP_OK) {
+        Serial.printf("[WifiManager] AP beacon interval set to %ums.\n", interval_ms);
+    } else {
+        Serial.printf("[WifiManager] WARNING: Cannot set AP beacon interval (%d)\n", err);
     }
 }
 
