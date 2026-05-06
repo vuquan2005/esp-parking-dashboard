@@ -27,8 +27,8 @@ void WifiManager::begin() {
         Serial.printf("[WifiManager] AP IP: %s\n", WiFi.softAPIP().toString().c_str());
 
         // Reduce AP transmit power and slow down beacon advertisements.
-        if (WiFi.setTxPower(WIFI_POWER_2dBm)) {
-            Serial.println("[WifiManager] AP TX power reduced to 2 dBm.");
+        if (WiFi.setTxPower(WIFI_POWER_13dBm)) {
+            Serial.println("[WifiManager] AP TX power reduced to 13 dBm.");
         }
         setApBeaconInterval(200);
     } else {
@@ -79,8 +79,8 @@ void WifiManager::applyApConfig(const WifiPrefs &prefs) {
     if (WiFi.softAP(prefs.ap_ssid.c_str(), pass)) {
         Serial.printf("[WifiManager] AP restarted: SSID='%s'\n", prefs.ap_ssid.c_str());
 
-        if (WiFi.setTxPower(WIFI_POWER_2dBm)) {
-            Serial.println("[WifiManager] AP TX power reduced to 2 dBm.");
+        if (WiFi.setTxPower(WIFI_POWER_13dBm)) {
+            Serial.println("[WifiManager] AP TX power reduced to 13 dBm.");
         }
         setApBeaconInterval(200);
     } else {
