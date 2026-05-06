@@ -814,6 +814,26 @@ void setup() {
     Serial2.begin(115200, SERIAL_8N1, PIN_UART_RX2, PIN_UART_TX2);
     Serial1.begin(115200, SERIAL_8N1, PIN_UART_RX1, -1);
 
+    // [VQ]
+    wifiManager.begin();
+    webManager.begin();
+
+    // Nối ParkingHandler ↔ WebManager bằng callbacks
+    parkingHandler.setSendFn(
+        [](const uint8_t *data, size_t len) { webManager.sendBinary(data, len); });
+    parkingHandler.setClientCountFn([]() -> size_t { return webManager.clientCount(); });
+
+    // WebManager → ParkingHandler: enqueue vào queue (thread-safe)
+    webManager.setOnBinary(
+        [](const uint8_t *data, size_t len) { parkingHandler.enqueueBinary(data, len); });
+    webManager.setOnConnect([]() {
+        sendCurrentParkingStatus();
+        parkingHandler.sendStatus();
+    });
+
+    parkingHandler.begin();
+    // [VQ END]
+
     ledcSetup(KENH_PWM, TAN_SO_PWM, DO_PHAN_GIAI);
     ledcAttachPin(PIN_SERVO_CONG, KENH_PWM);
     dung_motor_cong();
@@ -863,38 +883,10 @@ void setup() {
     don_duong_vet_can(1, 4);
     don_duong_vet_can(2, 4);
 
-    // [VQ]
-    wifiManager.begin();
-    webManager.begin();
-
-    // Nối ParkingHandler ↔ WebManager bằng callbacks
-    parkingHandler.setSendFn(
-        [](const uint8_t *data, size_t len) { webManager.sendBinary(data, len); });
-    parkingHandler.setClientCountFn([]() -> size_t { return webManager.clientCount(); });
-
-    // WebManager → ParkingHandler: enqueue vào queue (thread-safe)
-    webManager.setOnBinary(
-        [](const uint8_t *data, size_t len) { parkingHandler.enqueueBinary(data, len); });
-    webManager.setOnConnect([]() {
-        sendCurrentParkingStatus();
-        parkingHandler.sendStatus();
-    });
-
-    parkingHandler.begin();
-    // [VQ END]
-
     beep(1);
 }
 
 void loop() {
-    // [VQ]
-    // if (Serial2.available() > 0) {
-    //     String msg = Serial2.readStringUntil('\n');
-    //     msg.trim();
-    //     if (msg.startsWith("TIME:")) {
-    //         updateUnixTimeFromSerialMessage(msg);
-    //     }
-    // }
     parkingHandler.processCommands();
     parkingHandler.loop();
     webManager.loop();
@@ -904,38 +896,12 @@ void loop() {
 
     cap_nhat_tin_hieu_ngoai_vi();
 
-    for (int i = 0; i < 10; i++) {
-        bool trang_thai = (digitalRead(MANG_IR[i]) == LOW);
-
-        if (trang_thai != ir_cu[i]) {
-            ir_cu[i] = trang_thai;
-
-            int tang, cot;
-            if (i < 3) {
-                tang = 1;
-                cot = i + 1;
-            } else if (i < 6) {
-                tang = 2;
-                cot = i - 2;
-            } else {
-                tang = 3;
-                cot = i - 5;
-            }
-
-            Serial.print(" [IR STATUS]: IR_T");
-            Serial.print(tang);
-            Serial.print("_C");
-            Serial.print(cot);
-            Serial.print(" -> ");
-            Serial.println(trang_thai ? "CHẠM (CÓ XE)" : "KO (TRỐNG)");
-        }
-    }
-    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+    // SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
     if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
-        SPI.endTransaction();
+        // SPI.endTransaction();
         return;
     }
-    SPI.endTransaction();
+    // SPI.endTransaction();
 
     String uid = "";
     for (byte i = 0; i < rfid.uid.size; i++) {
