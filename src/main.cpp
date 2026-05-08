@@ -675,13 +675,34 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
 // ==========================================
 // 5. QUY TRINH GUI / LAY XE
 // ==========================================
+static const unsigned long BUTTON_DEBOUNCE_MS = 50;
+static const unsigned long BUTTON_PRESS_TIMEOUT_MS = 20000;
+
+bool waitForButtonPress() {
+    unsigned long pressedAt = 0;
+    unsigned long startTime = millis();
+
+    while (millis() - startTime < BUTTON_PRESS_TIMEOUT_MS) {
+        bool pressed = digitalRead(PIN_NUT_XAC_NHAN) == LOW; // INPUT_PULLUP: LOW means pressed
+        if (pressed) {
+            if (pressedAt == 0) {
+                pressedAt = millis();
+            } else if (millis() - pressedAt >= BUTTON_DEBOUNCE_MS) {
+                return true;
+            }
+        } else {
+            pressedAt = 0;
+        }
+        delay(5);
+    }
+    return false;
+}
+
 void cho_nguoi_dung_xac_nhan() {
     Serial.println(">> DANG CHO BAM NUT XAC NHAN...");
-    while (digitalRead(PIN_NUT_XAC_NHAN) == HIGH) {
-        delay(50);
-        if (digitalRead(PIN_NUT_XAC_NHAN) == HIGH) {
-            delay(100); // Debounce delay
-        }
+    if (!waitForButtonPress()) {
+        Serial.println("!!! LOI: KHONG NHAN DUOC NUT XAC NHAN TRONG THOI GIAN QUI DINH");
+        return;
     }
 
     Serial.println(">> DA NHAN NUT XAC NHAN!");
