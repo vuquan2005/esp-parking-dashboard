@@ -81,39 +81,6 @@ bool cam_bien_vi_tri[4][5];
 bool cua_da_dong_hoan_toan = false;
 bool cua_da_mo_hoan_toan = false;
 
-// RFID consecutive read failure counter.
-int rfidReadFailureCount = 0;
-
-int rfidReadTIMEOUTCount = 0;
-
-MFRC522::StatusCode rfidReadUid(String &uid) {
-    byte bufferATQA[2];
-    byte bufferSize = sizeof(bufferATQA);
-
-    // Reset baud rate settings before sending REQA.
-    rfid.PCD_WriteRegister(MFRC522::TxModeReg, 0x00);
-    rfid.PCD_WriteRegister(MFRC522::RxModeReg, 0x00);
-    rfid.PCD_WriteRegister(MFRC522::ModWidthReg, 0x26);
-
-    MFRC522::StatusCode status = rfid.PICC_RequestA(bufferATQA, &bufferSize);
-    if (status != MFRC522::STATUS_OK && status != MFRC522::STATUS_COLLISION) {
-        return status;
-    }
-
-    status = rfid.PICC_Select(&rfid.uid);
-    if (status != MFRC522::STATUS_OK) {
-        return status;
-    }
-
-    uid = "";
-    for (byte i = 0; i < rfid.uid.size; i++) {
-        uid += String(rfid.uid.uidByte[i] < 0x10 ? "0" : "");
-        uid += String(rfid.uid.uidByte[i], HEX);
-    }
-    uid.toUpperCase();
-    return MFRC522::STATUS_OK;
-}
-
 // ==========================================
 
 // [VQ]
@@ -958,43 +925,7 @@ void loop() {
     cap_nhat_tin_hieu_ngoai_vi();
 
     String uid = "";
-    MFRC522::StatusCode status = rfidReadUid(uid);
-    if (status != MFRC522::STATUS_OK) {
-        if (status == MFRC522::STATUS_TIMEOUT) {
-            // Timeout is expected when no card is present or the field is weak.
 
-            rfidReadTIMEOUTCount++;
-            if (rfidReadTIMEOUTCount > 1000) {
-                Serial.printf("[VQ] RFID read timeout count=%d\n", rfidReadTIMEOUTCount);
-                rfid.PCD_DumpVersionToSerial();
-                rfidReadTIMEOUTCount = 0;
-                digitalWrite(PIN_RFID_RST, LOW);
-                delay(50);
-                digitalWrite(PIN_RFID_RST, HIGH);
-                delay(50);
-            }
-            return;
-        }
-
-        rfidReadFailureCount++;
-        Serial.print("[VQ] RFID read error=");
-        Serial.print((uint8_t)status);
-        Serial.print(" (");
-        Serial.print(MFRC522::GetStatusCodeName(status));
-        Serial.printf(") count=%d\n", rfidReadFailureCount);
-        if (rfidReadFailureCount >= 300) {
-            Serial.print("[VQ] RFID read failed 300 times... ");
-            rfid.PCD_DumpVersionToSerial();
-            rfidReadFailureCount = 0;
-            digitalWrite(PIN_RFID_RST, LOW);
-            delay(50);
-            digitalWrite(PIN_RFID_RST, HIGH);
-            delay(50);
-        }
-        return;
-    }
-
-    rfidReadFailureCount = 0;
     Serial.println("\n--- THE RFID MOI DUOC QUET: " + uid + " ---");
 
     int vi_tri_tim_thay = -1;
