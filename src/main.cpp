@@ -5,6 +5,7 @@
 #include <MFRC522.h>
 #include <SPI.h>
 #include <WiFi.h>
+#include <driver/uart.h>
 #include <sys/time.h>
 #include <time.h>
 
@@ -871,7 +872,7 @@ static bool parseRfidPayload(const String &payload, String &uid) {
 }
 
 bool readRfidFromSerial(String &uid) {
-    if (Serial.available() > 0) {
+    while (Serial.available() > 0) {
         String tin_nhan = Serial.readStringUntil('\n');
         tin_nhan.trim();
         tin_nhan.toUpperCase();
@@ -1013,8 +1014,10 @@ void loop() {
 
     if (vi_tri_tim_thay != -1) {
         lay_xe(vi_tri_tim_thay);
+        uart_flush_input(UART_NUM_0);
     } else {
         gui_xe(uid);
+        uart_flush_input(UART_NUM_0);
     }
 
     rfid.PICC_HaltA();
