@@ -416,36 +416,6 @@ void cap_nhat_tin_hieu_ngoai_vi() {
             }
         }
     }
-
-    // Đọc từ PC (Debug)
-    if (Serial.available() > 0) {
-        String pc = Serial.readStringUntil('\n');
-        pc.trim();
-        if (pc == "DOORCLOSE") {
-            cua_da_dong_hoan_toan = true;
-        }
-        if (pc == "DOOROPEN") {
-            cua_da_mo_hoan_toan = true;
-        }
-        if (pc.startsWith("SW")) {
-            sw[pc[2] - '0'][pc[3] - '0'] = (pc[4] == '1');
-        }
-
-        // Thêm debug cho PC giả lập tín hiệu IR vị trí
-        if ((pc.startsWith("IR") || pc.startsWith("ir")) && pc.length() >= 5) {
-            cam_bien_vi_tri[pc[2] - '0'][pc[3] - '0'] = (pc[4] == '1');
-        }
-
-        if (pc == "1") {
-            mo_cong();
-        }
-        if (pc == "2") {
-            dong_cua_chinh();
-        }
-        if (pc == "0") {
-            dung_motor_cong();
-        }
-    }
 }
 
 // ==========================================
@@ -644,6 +614,7 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
 // ==========================================
 static const unsigned long BUTTON_DEBOUNCE_MS = 50;
 static const unsigned long BUTTON_PRESS_TIMEOUT_MS = 20000;
+static const unsigned long RFID_DEBOUNCE_MS = 5000;
 
 bool waitForButtonPress() {
     unsigned long pressedAt = 0;
@@ -834,6 +805,56 @@ void lay_xe(int target) {
     // WiFi.mode(WIFI_OFF);
 }
 
+static String lastRfidUid = "";
+static unsigned long lastRfidMillis = 0;
+
+static bool isValidRfidUid(const String &uid) {
+    if (uid.length() != 8) {
+        return false;
+    }
+    for (size_t i = 0; i < uid.length(); ++i) {
+        char c = uid[i];
+        if (!isxdigit(c)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool readRfidFromSerial(String &uid) {
+    if (Serial.available() > 0) {
+        String tin_nhan = Serial.readStringUntil('\n');
+        tin_nhan.trim();
+        tin_nhan.toUpperCase();
+
+        if (tin_nhan.length() == 0) {
+            return false;
+        }
+
+        if (!isValidRfidUid(tin_nhan)) {
+            Serial.print(">>> [UART0 - RFID READER] invalid UID: ");
+            Serial.println(tin_nhan);
+            return false;
+        }
+
+        unsigned long now = millis();
+        if (tin_nhan == lastRfidUid && now - lastRfidMillis < RFID_DEBOUNCE_MS) {
+            Serial.print(">>> [UART0 - RFID READER] duplicate UID ignored within ");
+            Serial.print(RFID_DEBOUNCE_MS);
+            Serial.println(" ms debounce window");
+            return false;
+        }
+
+        lastRfidUid = tin_nhan;
+        lastRfidMillis = now;
+        Serial.print(">>> [UART0 - RFID READER]: ");
+        Serial.println(tin_nhan);
+        uid = tin_nhan;
+        return true;
+    }
+    return false;
+}
+
 // ==========================================
 // 6. SETUP & LOOP
 // ==========================================
@@ -926,7 +947,11 @@ void loop() {
 
     String uid = "";
 
-    Serial.println("\n--- THE RFID MOI DUOC QUET: " + uid + " ---");
+    if (readRfidFromSerial(uid)) {
+        Serial.println("\n--- THE RFID MOI DUOC QUET: " + uid + " ---");
+    } else {
+        return; // No RFID read, skip the rest of the loop
+    }
 
     int vi_tri_tim_thay = -1;
     for (int i = 0; i < 10; i++) {
