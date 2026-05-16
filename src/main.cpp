@@ -821,6 +821,55 @@ static bool isValidRfidUid(const String &uid) {
     return true;
 }
 
+static uint8_t calculateUidChecksum(const String &uidString) {
+    if (uidString.length() != 8) {
+        return 0;
+    }
+
+    String normalized = uidString;
+    normalized.toUpperCase();
+
+    uint8_t checksum = 0;
+    for (size_t i = 0; i < normalized.length(); ++i) {
+        checksum += normalized[i];
+    }
+    return checksum;
+}
+
+static bool parseRfidPayload(const String &payload, String &uid) {
+    if (!payload.startsWith("UID|")) {
+        return false;
+    }
+
+    int secondSep = payload.indexOf('|', 4);
+    if (secondSep < 0) {
+        return false;
+    }
+
+    String uidString = payload.substring(4, secondSep);
+    String checksumString = payload.substring(secondSep + 1);
+    uidString.trim();
+    checksumString.trim();
+    uidString.toUpperCase();
+    checksumString.toUpperCase();
+
+    if (!isValidRfidUid(uidString) || checksumString.length() != 2) {
+        return false;
+    }
+
+    String expected = String(calculateUidChecksum(uidString), HEX);
+    expected.toUpperCase();
+    if (expected.length() == 1) {
+        expected = "0" + expected;
+    }
+    if (checksumString != expected) {
+        return false;
+    }
+
+    uid = uidString;
+    return true;
+}
+
 bool readRfidFromSerial(String &uid) {
     if (Serial.available() > 0) {
         String tin_nhan = Serial.readStringUntil('\n');
@@ -831,25 +880,26 @@ bool readRfidFromSerial(String &uid) {
             return false;
         }
 
-        if (!isValidRfidUid(tin_nhan)) {
-            Serial.print(">>> [UART0 - RFID READER] invalid UID: ");
+        String parsedUid;
+        if (!tin_nhan.startsWith("UID|") || !parseRfidPayload(tin_nhan, parsedUid)) {
+            Serial.print(">>> [UART0 - RFID READER] invalid payload: ");
             Serial.println(tin_nhan);
             return false;
         }
 
         unsigned long now = millis();
-        if (tin_nhan == lastRfidUid && now - lastRfidMillis < RFID_DEBOUNCE_MS) {
+        if (parsedUid == lastRfidUid && now - lastRfidMillis < RFID_DEBOUNCE_MS) {
             Serial.print(">>> [UART0 - RFID READER] duplicate UID ignored within ");
             Serial.print(RFID_DEBOUNCE_MS);
             Serial.println(" ms debounce window");
             return false;
         }
 
-        lastRfidUid = tin_nhan;
+        lastRfidUid = parsedUid;
         lastRfidMillis = now;
         Serial.print(">>> [UART0 - RFID READER]: ");
-        Serial.println(tin_nhan);
-        uid = tin_nhan;
+        Serial.println(parsedUid);
+        uid = parsedUid;
         return true;
     }
     return false;
