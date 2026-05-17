@@ -20,13 +20,23 @@ static const char *const kLevelColors[] = {
 static const char *const kLevelIcons[] = {"🛑", "⚠️ ", "ℹ️", "🔍"};
 static const char *const kLevelNames[] = {"E", "W", "I", "D"};
 
-static bool can_inline(log_level_t level) {
-    return level == LOG_LEVEL_INFO || level == LOG_LEVEL_DEBUG;
-}
-
 static void write_prefix(log_level_t level, const char *tag, const char *message) {
     Serial.printf("%s%s [%s][%s]\033[0m %s", kLevelColors[level], kLevelIcons[level],
                   kLevelNames[level], tag, message);
+}
+
+static void close_line_if_open(void) {
+    if (!g_line_open) {
+        return;
+    }
+
+    Serial.print("\n");
+    g_line_open = false;
+    g_inline_count = 0;
+}
+
+static void format_message(char *buffer, size_t size, const char *format, va_list args) {
+    vsnprintf(buffer, size, format, args);
 }
 
 void log_print(log_level_t level, const char *tag, const char *format, ...) {
@@ -40,18 +50,37 @@ void log_print(log_level_t level, const char *tag, const char *format, ...) {
     char buffer[128];
     va_list args;
     va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
+    format_message(buffer, sizeof(buffer), format, args);
+    va_end(args);
+
+    close_line_if_open();
+    write_prefix(level, tag, buffer);
+    Serial.print("\n");
+    g_last_level = level;
+    g_last_log_time = millis();
+}
+
+void log_print_inline(log_level_t level, const char *tag, const char *format, ...) {
+    if (tag == nullptr) {
+        tag = "UNKNOWN";
+    }
+    if (format == nullptr) {
+        return;
+    }
+
+    char buffer[128];
+    va_list args;
+    va_start(args, format);
+    format_message(buffer, sizeof(buffer), format, args);
     va_end(args);
 
     const uint32_t now = millis();
-    const bool should_inline = can_inline(level);
     const bool tag_changed = strcmp(g_last_tag, tag) != 0;
     const bool level_changed = g_last_level != level;
     const bool timeout_reached = now - g_last_log_time > kLogTimeoutMs;
     const bool line_is_full = g_inline_count >= kMaxInlineItems;
 
-    if (g_line_open &&
-        (!should_inline || tag_changed || level_changed || timeout_reached || line_is_full)) {
+    if (g_line_open && (tag_changed || level_changed || timeout_reached || line_is_full)) {
         Serial.print("\n");
         g_line_open = false;
         g_inline_count = 0;
@@ -59,8 +88,8 @@ void log_print(log_level_t level, const char *tag, const char *format, ...) {
 
     if (!g_line_open) {
         write_prefix(level, tag, buffer);
-        g_line_open = should_inline;
-        g_inline_count = should_inline ? 1 : 0;
+        g_line_open = false;
+        g_inline_count = 0;
     } else {
         Serial.printf(" -> %s", buffer);
         g_inline_count++;
@@ -73,12 +102,6 @@ void log_print(log_level_t level, const char *tag, const char *format, ...) {
 }
 
 void log_flush(void) {
-    if (!g_line_open) {
-        return;
-    }
-
-    Serial.print("\n");
-    g_line_open = false;
-    g_inline_count = 0;
+    close_line_if_open();
     g_last_tag[0] = '\0';
 }
