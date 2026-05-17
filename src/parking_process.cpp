@@ -89,21 +89,58 @@ void dong_cong() {
 }
 
 static bool process_grouped_sensor(const String &packet) {
-    if ((packet.startsWith("SW") || packet.startsWith("sw")) && packet.length() >= 12) {
-        for (int c = 1; c <= 4; c++)
-            sw[1][c] = (packet[2 + c] == '1');
-        for (int c = 1; c <= 4; c++)
-            sw[2][c] = (packet[7 + c] == '1');
+    int firstSpace = packet.indexOf(' ');
+    if (firstSpace == -1)
+        return false;
+
+    String prefix = packet.substring(0, firstSpace);
+
+    if (prefix.equalsIgnoreCase("SW")) {
+        int secondSpace = packet.indexOf(' ', firstSpace + 1);
+        if (secondSpace == -1)
+            return false;
+
+        String t1 = packet.substring(firstSpace + 1, secondSpace);
+        String t2 = packet.substring(secondSpace + 1);
+
+        if (t1.length() >= 4) {
+            for (int c = 1; c <= 4; c++)
+                sw[1][c] = (t1[c - 1] == '1');
+        }
+        if (t2.length() >= 4) {
+            for (int c = 1; c <= 4; c++)
+                sw[2][c] = (t2[c - 1] == '1');
+        }
         return true;
-    } else if ((packet.startsWith("IR") || packet.startsWith("ir")) && packet.length() >= 17) {
-        for (int c = 1; c <= 4; c++)
-            cam_bien_vi_tri[1][c] = (packet[2 + c] == '1');
-        for (int c = 1; c <= 3; c++)
-            cam_bien_vi_tri[2][c] = (packet[7 + c] == '1');
-        for (int c = 1; c <= 4; c++)
-            cam_bien_vi_tri[3][c] = (packet[12 + c] == '1');
+
+    } else if (prefix.equalsIgnoreCase("IR")) {
+        int secondSpace = packet.indexOf(' ', firstSpace + 1);
+        if (secondSpace == -1)
+            return false;
+
+        int thirdSpace = packet.indexOf(' ', secondSpace + 1);
+        if (thirdSpace == -1)
+            return false;
+
+        String t1 = packet.substring(firstSpace + 1, secondSpace);
+        String t2 = packet.substring(secondSpace + 1, thirdSpace);
+        String t3 = packet.substring(thirdSpace + 1);
+
+        if (t1.length() >= 4) {
+            for (int c = 1; c <= 4; c++)
+                cam_bien_vi_tri[1][c] = (t1[c - 1] == '1');
+        }
+        if (t2.length() >= 3) {
+            for (int c = 1; c <= 3; c++)
+                cam_bien_vi_tri[2][c] = (t2[c - 1] == '1');
+        }
+        if (t3.length() >= 4) {
+            for (int c = 1; c <= 4; c++)
+                cam_bien_vi_tri[3][c] = (t3[c - 1] == '1');
+        }
         return true;
     }
+
     return false;
 }
 
