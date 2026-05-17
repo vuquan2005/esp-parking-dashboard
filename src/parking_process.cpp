@@ -71,7 +71,7 @@ void mo_cong() {
     Serial.println(">> CUA DA MO HOAN TOAN.");
 }
 
-void dong_cua_chinh() {
+void dong_cong() {
     Serial.println(">> DANG DONG CUA...");
     dieu_khien_goc_servo(0);
     delay(1000);
@@ -79,7 +79,7 @@ void dong_cua_chinh() {
     Serial.println(">> CUA DA DONG AN TOAN.");
 }
 
-void cap_nhat_tin_hieu_ngoai_vi() {
+void update_sensor() {
     while (Serial1.available() > 0) {
         String tin_nhan = Serial1.readStringUntil('\n');
         tin_nhan.trim();
@@ -110,7 +110,7 @@ void cap_nhat_tin_hieu_ngoai_vi() {
 }
 
 void day_den_sw(int row, int pallet, const String &huong, int sw_target) {
-    cap_nhat_tin_hieu_ngoai_vi();
+    update_sensor();
     if (sw[row][sw_target]) {
         return;
     }
@@ -118,7 +118,7 @@ void day_den_sw(int row, int pallet, const String &huong, int sw_target) {
     gui_lenh_motor(String(row) + String(pallet) + huong);
     unsigned long timeout = millis();
     while (!sw[row][sw_target]) {
-        cap_nhat_tin_hieu_ngoai_vi();
+        update_sensor();
         if (millis() - timeout > 10000) {
             gui_lenh_motor("st");
             Serial.println("!!! LOI: MOTOR NGANG KET");
@@ -286,7 +286,7 @@ void gui_xe(const String &uid) {
         gui_lenh_motor(String(t) + String(c) + "KD");
         delay(300);
         while (!cam_bien_vi_tri[1][c]) {
-            cap_nhat_tin_hieu_ngoai_vi();
+            update_sensor();
             delay(10);
         }
         gui_lenh_motor("st");
@@ -294,13 +294,13 @@ void gui_xe(const String &uid) {
 
     mo_cong();
     cho_nguoi_dung_xac_nhan();
-    dong_cua_chinh();
+    dong_cong();
 
     if (t > 1) {
         gui_lenh_motor(String(t) + String(c) + "KU");
         delay(300);
         while (!cam_bien_vi_tri[t][c]) {
-            cap_nhat_tin_hieu_ngoai_vi();
+            update_sensor();
             delay(10);
         }
         gui_lenh_motor("st");
@@ -340,7 +340,7 @@ void lay_xe(int target) {
         gui_lenh_motor(String(t) + String(c) + "KD");
         delay(300);
         while (!cam_bien_vi_tri[1][c]) {
-            cap_nhat_tin_hieu_ngoai_vi();
+            update_sensor();
             delay(10);
         }
         gui_lenh_motor("st");
@@ -348,13 +348,13 @@ void lay_xe(int target) {
 
     mo_cong();
     cho_nguoi_dung_xac_nhan();
-    dong_cua_chinh();
+    dong_cong();
 
     if (t > 1) {
         gui_lenh_motor(String(t) + String(c) + "KU");
         delay(300);
         while (!cam_bien_vi_tri[t][c]) {
-            cap_nhat_tin_hieu_ngoai_vi();
+            update_sensor();
             delay(10);
         }
         gui_lenh_motor("st");

@@ -64,7 +64,7 @@ void loop() {
 
     vTaskDelay(pdMS_TO_TICKS(5));
 
-    cap_nhat_tin_hieu_ngoai_vi();
+    update_sensor();
 
     String uid = "";
     if (!readRfidFromSerial(uid)) {
