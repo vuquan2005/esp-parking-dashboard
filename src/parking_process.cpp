@@ -88,26 +88,23 @@ void dong_cong() {
     LOG_I_INLINE(TAG_PARKING, "\033[0;32m Success! \033[0m");
 }
 
-static void process_sensor_token(const String &token) {
-    if (token.length() == 0) {
-        return;
+static bool process_grouped_sensor(const String &packet) {
+    if ((packet.startsWith("SW") || packet.startsWith("sw")) && packet.length() >= 12) {
+        for (int c = 1; c <= 4; c++)
+            sw[1][c] = (packet[2 + c] == '1');
+        for (int c = 1; c <= 4; c++)
+            sw[2][c] = (packet[7 + c] == '1');
+        return true;
+    } else if ((packet.startsWith("IR") || packet.startsWith("ir")) && packet.length() >= 17) {
+        for (int c = 1; c <= 4; c++)
+            cam_bien_vi_tri[1][c] = (packet[2 + c] == '1');
+        for (int c = 1; c <= 3; c++)
+            cam_bien_vi_tri[2][c] = (packet[7 + c] == '1');
+        for (int c = 1; c <= 4; c++)
+            cam_bien_vi_tri[3][c] = (packet[12 + c] == '1');
+        return true;
     }
-
-    if (token.startsWith("SW") && token.length() >= 5) {
-        int t = token[2] - '0';
-        int c = token[3] - '0';
-        bool trang_thai_sw = (token[4] == '1');
-        if (t >= 0 && t <= 3 && c >= 1 && c <= 4) {
-            sw[t][c] = trang_thai_sw;
-        }
-    } else if ((token.startsWith("IR") || token.startsWith("ir")) && token.length() >= 5) {
-        int tang_hien_tai = token[2] - '0';
-        int cot_hien_tai = token[3] - '0';
-        bool trang_thai_vi_tri = (token[4] == '1');
-        if (tang_hien_tai >= 1 && tang_hien_tai <= 3 && cot_hien_tai >= 1 && cot_hien_tai <= 4) {
-            cam_bien_vi_tri[tang_hien_tai][cot_hien_tai] = trang_thai_vi_tri;
-        }
-    }
+    return false;
 }
 
 void update_sensor() {
@@ -115,28 +112,13 @@ void update_sensor() {
         String tin_nhan = Serial1.readStringUntil('\n');
         tin_nhan.trim();
 
-        if (tin_nhan.length() > 0) {
-            LOG_D_INLINE(TAG_SENSOR, tin_nhan.c_str());
-        }
+        if (tin_nhan.length() == 0)
+            continue;
 
-        int start = 0;
-        while (start < tin_nhan.length()) {
-            while (start < tin_nhan.length() && tin_nhan[start] == ' ') {
-                start++;
-            }
-            if (start >= tin_nhan.length()) {
-                break;
-            }
+        LOG_D_INLINE(TAG_SENSOR, tin_nhan.c_str());
 
-            int end = tin_nhan.indexOf(' ', start);
-            if (end == -1) {
-                end = tin_nhan.length();
-            }
-
-            String token = tin_nhan.substring(start, end);
-            token.trim();
-            process_sensor_token(token);
-            start = end + 1;
+        if (!process_grouped_sensor(tin_nhan)) {
+            LOG_W_INLINE(TAG_PARSER, "Unknown packet format: %s", tin_nhan.c_str());
         }
     }
 }
