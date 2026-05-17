@@ -8,11 +8,8 @@ static const char *TAG_STATE = "PARKING_STATE";
 static const char *TAG_WS = "PARKING_WS";
 
 O_Do ds_o[10];
-bool ir_cu[10];
 bool sw[4][5];
 bool cam_bien_vi_tri[4][5];
-bool cua_da_dong_hoan_toan = false;
-bool cua_da_mo_hoan_toan = false;
 
 ParkingStatus_Status SlotStatus[10] = {ParkingStatus_Status_UNKNOWN};
 uint32_t Grid[12] = {1, 2, 3, 4, 5, 6, 7, 0, 8, 9, 10, 0};

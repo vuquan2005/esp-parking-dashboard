@@ -16,11 +16,8 @@ struct O_Do {
 #define cot col
 
 extern O_Do ds_o[10];
-extern bool ir_cu[10];
 extern bool sw[4][5];
 extern bool cam_bien_vi_tri[4][5];
-extern bool cua_da_dong_hoan_toan;
-extern bool cua_da_mo_hoan_toan;
 
 extern ParkingStatus_Status SlotStatus[10];
 extern uint32_t Grid[12];
