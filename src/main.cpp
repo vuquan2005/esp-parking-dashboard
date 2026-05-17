@@ -5,9 +5,7 @@
 #include "rfid_reader.h"
 #include "websever.h"
 #include "wifimanager.h"
-
 #include <Arduino.h>
-#include <MFRC522.h>
 #include <SPI.h>
 #include <WiFi.h>
 #include <driver/uart.h>
@@ -15,8 +13,6 @@
 #include <time.h>
 
 SET_LOOP_TASK_STACK_SIZE(16384);
-
-MFRC522 rfid(PIN_RFID_SS, PIN_RFID_RST);
 
 WebManager webManager;
 WifiManager wifiManager;
@@ -47,17 +43,6 @@ void setup() {
     ledcAttachPin(PIN_SERVO_CONG, KENH_PWM);
     dung_motor_cong();
 
-    pinMode(PIN_RFID_RST, OUTPUT);
-    digitalWrite(PIN_RFID_RST, LOW);
-    delay(100);
-    digitalWrite(PIN_RFID_RST, HIGH);
-    delay(100);
-
-    SPI.begin(18, 19, 23, PIN_RFID_SS);
-    SPI.setFrequency(1000000);
-    rfid.PCD_Init();
-    Serial.println("--- Kiem tra ket noi RC522 ---");
-    rfid.PCD_DumpVersionToSerial();
     pinMode(PIN_BUZZER, OUTPUT);
     pinMode(PIN_NUT_XAC_NHAN, INPUT_PULLUP);
 
@@ -104,6 +89,5 @@ void loop() {
         uart_flush_input(UART_NUM_0);
     }
 
-    rfid.PICC_HaltA();
     delay(500);
 }

@@ -89,11 +89,7 @@ void cap_nhat_tin_hieu_ngoai_vi() {
             Serial.println(tin_nhan);
         }
 
-        if (tin_nhan == "DOORCLOSE") {
-            cua_da_dong_hoan_toan = true;
-        } else if (tin_nhan == "DOOROPEN") {
-            cua_da_mo_hoan_toan = true;
-        } else if (tin_nhan.startsWith("SW") && tin_nhan.length() >= 5) {
+        if (tin_nhan.startsWith("SW") && tin_nhan.length() >= 5) {
             int t = tin_nhan[2] - '0';
             int c = tin_nhan[3] - '0';
             bool trang_thai_sw = (tin_nhan[4] == '1');
@@ -123,7 +119,7 @@ void day_den_sw(int row, int pallet, const String &huong, int sw_target) {
     unsigned long timeout = millis();
     while (!sw[row][sw_target]) {
         cap_nhat_tin_hieu_ngoai_vi();
-        if (millis() - timeout > 15000) {
+        if (millis() - timeout > 10000) {
             gui_lenh_motor("st");
             Serial.println("!!! LOI: MOTOR NGANG KET");
             return;

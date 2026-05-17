@@ -3,8 +3,6 @@
 
 #include <Arduino.h>
 
-#define PIN_RFID_SS 5
-#define PIN_RFID_RST 22
 #define PIN_BUZZER 4
 #define PIN_NUT_XAC_NHAN 14
 #define PIN_SERVO_CONG 32
