@@ -54,10 +54,10 @@ void setup() {
 
     initParkingPositions();
 
-    LOG_I_INLINE("MAIN", "completed");
+    LOG_I_INLINE("MAIN", "\033[0;32m completed! \033[0m");
     don_duong_vet_can(1, 4);
     don_duong_vet_can(2, 4);
-    LOG_W("MAIN", "Parking positions initialized");
+    LOG("MAIN", "\033[0;32m Parking positions initialized \033[0m");
 
     beep(1);
 }

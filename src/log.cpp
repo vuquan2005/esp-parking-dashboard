@@ -21,8 +21,8 @@ static const char *const kLevelIcons[] = {"🛑", "⚠️ ", "ℹ️", "🔍"};
 static const char *const kLevelNames[] = {"E", "W", "I", "D"};
 
 static void write_prefix(log_level_t level, const char *tag, const char *message) {
-    Serial.printf("%s [%s][%s%s\033[0m] %s", kLevelIcons[level], kLevelNames[level],
-                  kLevelColors[level], tag, message);
+    Serial.printf("%s%s [%s][%s]\033[0m %s", kLevelColors[level], kLevelIcons[level],
+                  kLevelNames[level], tag, message);
 }
 
 static void close_line_if_open(void) {

@@ -4,7 +4,9 @@
 #include <Arduino.h>
 
 static const char *TAG_PARKING = "PARKING";
+static const char *TAG_PARSER = "PARSER";
 static const char *TAG_MOTOR = "MOTOR";
+static const char *TAG_SEND_UART = "SEND_UART";
 static const char *TAG_SENSOR = "SENSOR";
 static const char *TAG_PATH = "PATH";
 static const char *TAG_BUTTON = "BUTTON";
@@ -58,7 +60,7 @@ void beep(int n) {
 
 void gui_lenh_motor(const String &lenh) {
     Serial2.println(lenh);
-    LOG_I(TAG_MOTOR, "ACTION: %s", lenh.c_str());
+    LOG_I_INLINE(TAG_SEND_UART, "ACTION: %s", lenh.c_str());
 }
 
 void dieu_khien_goc_servo(int goc) {
@@ -71,19 +73,19 @@ void dung_motor_cong() {
 }
 
 void mo_cong() {
-    LOG_I(TAG_MOTOR, "DANG MO CONG...");
+    LOG_I_INLINE(TAG_PARKING, "DANG MO CONG... ");
     dieu_khien_goc_servo(90);
     delay(1000);
     dung_motor_cong();
-    LOG_I(TAG_MOTOR, "CUA DA MO HOAN TOAN.");
+    LOG_I_INLINE(TAG_PARKING, "\033[0;32m Success! \033[0m");
 }
 
 void dong_cong() {
-    LOG_I(TAG_MOTOR, "DANG DONG CUA...");
+    LOG_I_INLINE(TAG_PARKING, "DANG DONG CUA... ");
     dieu_khien_goc_servo(0);
     delay(1000);
     dung_motor_cong();
-    LOG_I(TAG_MOTOR, "CUA DA DONG AN TOAN.");
+    LOG_I_INLINE(TAG_PARKING, "\033[0;32m Success! \033[0m");
 }
 
 void update_sensor() {
@@ -238,13 +240,13 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
 }
 
 void cho_nguoi_dung_xac_nhan() {
-    LOG_I(TAG_BUTTON, "DANG CHO BAM NUT XAC NHAN...");
+    LOG_I_INLINE(TAG_BUTTON, "Wait for button press...");
     if (!waitForButtonPress()) {
         LOG_E(TAG_BUTTON, "TIMEOUT CHO NUT XAC NHAN!");
         return;
     }
 
-    LOG_I(TAG_BUTTON, "DA NHAN NUT XAC NHAN!");
+    LOG_I_INLINE(TAG_BUTTON, "\033[0;32m Button pressed! \033[0m");
     beep(2);
     delay(500);
 }
@@ -269,7 +271,7 @@ void gui_xe(const String &uid) {
     int pallet_id = rowPallet2SlotID(t, c);
     int slotIndex = rowPallet2SlotIndex(t, c);
     if (pallet_id < 1 || slotIndex < 0) {
-        LOG_W(TAG_PARKING, "Invalid slot mapping for target=%d (t=%d,c=%d)", target, t, c);
+        LOG_W(TAG_PARSER, "Invalid slot mapping for target=%d (t=%d,c=%d)", target, t, c);
         return;
     }
 
@@ -324,7 +326,7 @@ void lay_xe(int target) {
     int pallet_id = rowPallet2SlotID(t, c);
     int slotIndex = rowPallet2SlotIndex(t, c);
     if (pallet_id < 1 || slotIndex < 0) {
-        LOG_W(TAG_PARKING, "Invalid slot mapping for target=%d (t=%d,c=%d)", target, t, c);
+        LOG_W(TAG_PARSER, "Invalid slot mapping for target=%d (t=%d,c=%d)", target, t, c);
         return;
     }
 
