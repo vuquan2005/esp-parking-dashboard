@@ -88,6 +88,28 @@ void dong_cong() {
     LOG_I_INLINE(TAG_PARKING, "\033[0;32m Success! \033[0m");
 }
 
+static void process_sensor_token(const String &token) {
+    if (token.length() == 0) {
+        return;
+    }
+
+    if (token.startsWith("SW") && token.length() >= 5) {
+        int t = token[2] - '0';
+        int c = token[3] - '0';
+        bool trang_thai_sw = (token[4] == '1');
+        if (t >= 0 && t <= 3 && c >= 1 && c <= 4) {
+            sw[t][c] = trang_thai_sw;
+        }
+    } else if ((token.startsWith("IR") || token.startsWith("ir")) && token.length() >= 5) {
+        int tang_hien_tai = token[2] - '0';
+        int cot_hien_tai = token[3] - '0';
+        bool trang_thai_vi_tri = (token[4] == '1');
+        if (tang_hien_tai >= 1 && tang_hien_tai <= 3 && cot_hien_tai >= 1 && cot_hien_tai <= 4) {
+            cam_bien_vi_tri[tang_hien_tai][cot_hien_tai] = trang_thai_vi_tri;
+        }
+    }
+}
+
 void update_sensor() {
     while (Serial1.available() > 0) {
         String tin_nhan = Serial1.readStringUntil('\n');
@@ -97,22 +119,24 @@ void update_sensor() {
             LOG_D_INLINE(TAG_SENSOR, tin_nhan.c_str());
         }
 
-        if (tin_nhan.startsWith("SW") && tin_nhan.length() >= 5) {
-            int t = tin_nhan[2] - '0';
-            int c = tin_nhan[3] - '0';
-            bool trang_thai_sw = (tin_nhan[4] == '1');
-            if (t >= 0 && t <= 3 && c >= 1 && c <= 4) {
-                sw[t][c] = trang_thai_sw;
+        int start = 0;
+        while (start < tin_nhan.length()) {
+            while (start < tin_nhan.length() && tin_nhan[start] == ' ') {
+                start++;
             }
-        } else if ((tin_nhan.startsWith("IR") || tin_nhan.startsWith("ir")) &&
-                   tin_nhan.length() >= 5) {
-            int tang_hien_tai = tin_nhan[2] - '0';
-            int cot_hien_tai = tin_nhan[3] - '0';
-            bool trang_thai_vi_tri = (tin_nhan[4] == '1');
-            if (tang_hien_tai >= 1 && tang_hien_tai <= 3 && cot_hien_tai >= 1 &&
-                cot_hien_tai <= 4) {
-                cam_bien_vi_tri[tang_hien_tai][cot_hien_tai] = trang_thai_vi_tri;
+            if (start >= tin_nhan.length()) {
+                break;
             }
+
+            int end = tin_nhan.indexOf(' ', start);
+            if (end == -1) {
+                end = tin_nhan.length();
+            }
+
+            String token = tin_nhan.substring(start, end);
+            token.trim();
+            process_sensor_token(token);
+            start = end + 1;
         }
     }
 }
