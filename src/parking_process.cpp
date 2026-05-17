@@ -1,6 +1,13 @@
 #include "parking_process.h"
 #include "hardware.h"
+#include "log.h"
 #include <Arduino.h>
+
+static const char *TAG_PARKING = "PARKING";
+static const char *TAG_MOTOR = "MOTOR";
+static const char *TAG_SENSOR = "SENSOR";
+static const char *TAG_PATH = "PATH";
+static const char *TAG_BUTTON = "BUTTON";
 
 static const unsigned long BUTTON_DEBOUNCE_MS = 50;
 static const unsigned long BUTTON_PRESS_TIMEOUT_MS = 20000;
@@ -51,7 +58,7 @@ void beep(int n) {
 
 void gui_lenh_motor(const String &lenh) {
     Serial2.println(lenh);
-    Serial.println("[MASTER -> ACTION]: " + lenh);
+    LOG_I(TAG_MOTOR, "ACTION: %s", lenh.c_str());
 }
 
 void dieu_khien_goc_servo(int goc) {
@@ -64,19 +71,19 @@ void dung_motor_cong() {
 }
 
 void mo_cong() {
-    Serial.println(">> DANG MO CONG...");
+    LOG_I(TAG_MOTOR, "DANG MO CONG...");
     dieu_khien_goc_servo(90);
     delay(1000);
     dung_motor_cong();
-    Serial.println(">> CUA DA MO HOAN TOAN.");
+    LOG_I(TAG_MOTOR, "CUA DA MO HOAN TOAN.");
 }
 
 void dong_cong() {
-    Serial.println(">> DANG DONG CUA...");
+    LOG_I(TAG_MOTOR, "DANG DONG CUA...");
     dieu_khien_goc_servo(0);
     delay(1000);
     dung_motor_cong();
-    Serial.println(">> CUA DA DONG AN TOAN.");
+    LOG_I(TAG_MOTOR, "CUA DA DONG AN TOAN.");
 }
 
 void update_sensor() {
@@ -85,8 +92,7 @@ void update_sensor() {
         tin_nhan.trim();
 
         if (tin_nhan.length() > 0) {
-            Serial.print(">>> [UART1 - ESP SENSOR]: ");
-            Serial.println(tin_nhan);
+            LOG_D_INLINE(TAG_SENSOR, tin_nhan.c_str());
         }
 
         if (tin_nhan.startsWith("SW") && tin_nhan.length() >= 5) {
@@ -121,7 +127,7 @@ void day_den_sw(int row, int pallet, const String &huong, int sw_target) {
         update_sensor();
         if (millis() - timeout > 10000) {
             gui_lenh_motor("st");
-            Serial.println("!!! LOI: MOTOR NGANG KET");
+            LOG_E(TAG_MOTOR, "MOTOR NGANG KET");
             return;
         }
         delay(10);
@@ -139,7 +145,7 @@ void day_den_sw(int row, int pallet, const String &huong, int sw_target) {
 }
 
 void don_duong_vet_can(int row, int cot_trong_yc) {
-    Serial.printf("\n--- DON DUONG T%d CHO COT %d ---\n", row, cot_trong_yc);
+    LOG_I(TAG_PATH, "--- DON DUONG T%d CHO COT %d ---", row, cot_trong_yc);
     if (cot_trong_yc == 1) {
         SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PROCESSING;
         SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_PENDING;
@@ -232,13 +238,13 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
 }
 
 void cho_nguoi_dung_xac_nhan() {
-    Serial.println(">> DANG CHO BAM NUT XAC NHAN...");
+    LOG_I(TAG_BUTTON, "DANG CHO BAM NUT XAC NHAN...");
     if (!waitForButtonPress()) {
-        Serial.println("!!! LOI: KHONG NHAN DUOC NUT XAC NHAN TRONG THOI GIAN QUI DINH");
+        LOG_E(TAG_BUTTON, "TIMEOUT CHO NUT XAC NHAN!");
         return;
     }
 
-    Serial.println(">> DA NHAN NUT XAC NHAN!");
+    LOG_I(TAG_BUTTON, "DA NHAN NUT XAC NHAN!");
     beep(2);
     delay(500);
 }
@@ -263,14 +269,14 @@ void gui_xe(const String &uid) {
     int pallet_id = rowPallet2SlotID(t, c);
     int slotIndex = rowPallet2SlotIndex(t, c);
     if (pallet_id < 1 || slotIndex < 0) {
-        Serial.printf("[VQ] Invalid slot mapping for target=%d (t=%d,c=%d)\n", target, t, c);
+        LOG_W(TAG_PARKING, "Invalid slot mapping for target=%d (t=%d,c=%d)", target, t, c);
         return;
     }
 
     SlotStatus[slotIndex] = ParkingStatus_Status_PENDING;
     sendCurrentParkingStatus();
     sendCurrentParkingEvent(pallet_id, ParkingEvent_EventType_IN, false);
-    Serial.printf("\n>>> GUI XE VAO T%d-C%d\n", t, c);
+    LOG_I(TAG_PARKING, "GUI XE VAO T%d-C%d", t, c);
 
     if (t > 1) {
         if (t == 2) {
@@ -318,14 +324,14 @@ void lay_xe(int target) {
     int pallet_id = rowPallet2SlotID(t, c);
     int slotIndex = rowPallet2SlotIndex(t, c);
     if (pallet_id < 1 || slotIndex < 0) {
-        Serial.printf("[VQ] Invalid slot mapping for target=%d (t=%d,c=%d)\n", target, t, c);
+        LOG_W(TAG_PARKING, "Invalid slot mapping for target=%d (t=%d,c=%d)", target, t, c);
         return;
     }
 
     SlotStatus[slotIndex] = ParkingStatus_Status_PROCESSING;
     sendCurrentParkingStatus();
     sendCurrentParkingEvent(pallet_id, ParkingEvent_EventType_OUT, false);
-    Serial.printf("\n>>> LAY XE T%d-C%d\n", t, c);
+    LOG_I(TAG_PARKING, "LAY XE T%d-C%d", t, c);
 
     if (t > 1) {
         if (t == 2) {
@@ -361,7 +367,7 @@ void lay_xe(int target) {
     }
 
     ds_o[target].ma_the_uid = "";
-    Serial.println(">> HOAN TAT LAY XE. O DA TRONG.");
+    LOG_I(TAG_PARKING, "HOAN TAT LAY XE. O DA TRONG.");
 
     recalcStatus();
     sendCurrentParkingStatus();

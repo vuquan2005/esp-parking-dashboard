@@ -1,4 +1,5 @@
 #include "hardware.h"
+#include "log.h"
 #include "parking_handler.h"
 #include "parking_process.h"
 #include "parking_state.h"
@@ -22,6 +23,8 @@ void setup() {
     Serial.begin(115200);
     Serial2.begin(115200, SERIAL_8N1, PIN_UART_RX2, PIN_UART_TX2);
     Serial1.begin(115200, SERIAL_8N1, PIN_UART_RX1, PIN_UART_TX1);
+
+    LOG_I_INLINE("MAIN", "Setup ");
 
     wifiManager.begin();
     webManager.begin();
@@ -51,9 +54,10 @@ void setup() {
 
     initParkingPositions();
 
-    Serial.println("\n--- HE THONG MASTER FULL READY ---");
+    LOG_I_INLINE("MAIN", "completed");
     don_duong_vet_can(1, 4);
     don_duong_vet_can(2, 4);
+    LOG_W("MAIN", "Parking positions initialized");
 
     beep(1);
 }
@@ -71,7 +75,7 @@ void loop() {
         return;
     }
 
-    Serial.println("\n--- THE RFID MOI DUOC QUET: " + uid + " ---");
+    LOG("MAIN", "RFID scanned: %s", uid.c_str());
 
     int vi_tri_tim_thay = -1;
     for (int i = 0; i < 10; i++) {

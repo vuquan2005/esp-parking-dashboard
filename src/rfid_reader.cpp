@@ -1,6 +1,9 @@
 #include "rfid_reader.h"
+#include "log.h"
 
 #include <Arduino.h>
+
+static const char *TAG_RFID = "RFID";
 
 static const unsigned long RFID_DEBOUNCE_MS = 5000;
 static String lastRfidUid = "";
@@ -72,23 +75,20 @@ bool readRfidFromSerial(String &uid) {
 
         String parsedUid;
         if (!tin_nhan.startsWith("UID|") || !parseRfidPayload(tin_nhan, parsedUid)) {
-            Serial.print(">>> [UART0 - RFID READER] invalid payload: ");
-            Serial.println(tin_nhan);
+            LOG_E(TAG_RFID, "invalid payload: %s", tin_nhan.c_str());
             return false;
         }
 
         unsigned long now = millis();
         if (parsedUid == lastRfidUid && now - lastRfidMillis < RFID_DEBOUNCE_MS) {
-            Serial.print(">>> [UART0 - RFID READER] duplicate UID ignored within ");
-            Serial.print(RFID_DEBOUNCE_MS);
-            Serial.println(" ms debounce window");
+            LOG_D(TAG_RFID, "duplicate UID ignored within %lu ms debounce window",
+                  RFID_DEBOUNCE_MS);
             return false;
         }
 
         lastRfidUid = parsedUid;
         lastRfidMillis = now;
-        Serial.print(">>> [UART0 - RFID READER]: ");
-        Serial.println(parsedUid);
+        LOG_D(TAG_RFID, "%s", parsedUid.c_str());
         uid = parsedUid;
         return true;
     }

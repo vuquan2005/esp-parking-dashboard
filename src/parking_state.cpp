@@ -1,7 +1,11 @@
 #include "parking_state.h"
 #include "hardware.h"
+#include "log.h"
 
 #include <Arduino.h>
+
+static const char *TAG_STATE = "PARKING_STATE";
+static const char *TAG_WS = "PARKING_WS";
 
 O_Do ds_o[10];
 bool ir_cu[10];
@@ -28,20 +32,20 @@ void recalcStatus() {
 
 int rowPallet2SlotID(int row, int indexInRow) {
     if (row < 1 || row > 3) {
-        Serial.printf("[VQ] Invalid row: %d\n", row);
+        LOG_E(TAG_STATE, "Invalid row: %d", row);
         return -1;
     }
     if (indexInRow < 1 || indexInRow > 4) {
-        Serial.printf("[VQ] Invalid index: %d\n", indexInRow);
+        LOG_E(TAG_STATE, "Invalid index: %d", indexInRow);
         return -1;
     }
     if (row < 3 && indexInRow > 3) {
-        Serial.printf("[VQ] Invalid index for row %d: %d\n", row, indexInRow);
+        LOG_E(TAG_STATE, "Invalid index for row %d: %d", row, indexInRow);
         return -1;
     }
     const int number = (row == 3) ? indexInRow : (row == 2 ? indexInRow + 4 : indexInRow + 7);
     if (number < 1 || number > 10) {
-        Serial.printf("[VQ] Invalid slot number: %d\n", number);
+        LOG_E(TAG_STATE, "Invalid slot number: %d", number);
         return -1;
     }
     return number;
@@ -63,36 +67,36 @@ int findGridIndex(int PalletId) {
 int movePalletInGrid(int PalletId, int direction) {
     int gridIndex = findGridIndex(PalletId);
     if (gridIndex == -1) {
-        Serial.printf("[VQ] Pallet ID %d not found in grid\n", PalletId);
+        LOG_E(TAG_STATE, "Pallet ID %d not found in grid", PalletId);
         return -1;
     }
     int row = gridIndex / 4;
     int col = gridIndex % 4;
 
     if (row == 0) {
-        Serial.printf("[VQ] Pallet ID %d is on the top row and cannot be moved\n", PalletId);
+        LOG_W(TAG_STATE, "Pallet ID %d is on the top row and cannot be moved", PalletId);
         return -1;
     }
 
     if (direction == 1 && col < 3) {
         if (Grid[gridIndex + 1] != 0) {
-            Serial.printf("[VQ] Cannot move Pallet ID %d to the right because the target position "
-                          "is not empty\n",
-                          PalletId);
+            LOG_W(TAG_STATE,
+                  "Cannot move Pallet ID %d to the right because the target position is not empty",
+                  PalletId);
             return -2;
         }
         std::swap(Grid[gridIndex], Grid[gridIndex + 1]);
     } else if (direction == 2 && col > 0) {
         if (Grid[gridIndex - 1] != 0) {
-            Serial.printf("[VQ] Cannot move Pallet ID %d to the left because the target position "
-                          "is not empty\n",
-                          PalletId);
+            LOG_W(TAG_STATE,
+                  "Cannot move Pallet ID %d to the left because the target position is not empty",
+                  PalletId);
             return -2;
         }
         std::swap(Grid[gridIndex], Grid[gridIndex - 1]);
     } else {
-        Serial.printf("[VQ] Invalid move for Pallet ID %d in direction %d (row: %d, col: %d)\n",
-                      PalletId, direction, row, col);
+        LOG_W(TAG_STATE, "Invalid move for Pallet ID %d in direction %d (row: %d, col: %d)",
+              PalletId, direction, row, col);
         return -1;
     }
     return 0;
@@ -106,7 +110,7 @@ void sendCurrentParkingStatus() {
 
 void sendCurrentParkingEvent(uint32_t pallet_id, ParkingEvent_EventType event_type, bool is_done) {
     if (pallet_id < 1 || pallet_id > 10) {
-        Serial.printf("[VQ] Invalid pallet_id=%u passed to sendCurrentParkingEvent\n", pallet_id);
+        LOG_E(TAG_WS, "Invalid pallet_id=%u passed to sendCurrentParkingEvent", pallet_id);
         return;
     }
 
