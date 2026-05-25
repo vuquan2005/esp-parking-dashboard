@@ -1,4 +1,7 @@
 #include "parking_handler.h"
+#include "log.h"
+
+static const char *TAG_HANDLER = "PARK_HANDLER";
 
 ParkingHandler::ParkingHandler(WifiManager &wifiManager)
     : _wifiManager(wifiManager), _sendBinary(nullptr), _clientCount(nullptr), _cmdQueue(nullptr) {}
@@ -6,7 +9,7 @@ ParkingHandler::ParkingHandler(WifiManager &wifiManager)
 void ParkingHandler::begin() {
     _cmdQueue = xQueueCreate(CMD_QUEUE_SIZE, sizeof(CmdData));
     if (!_cmdQueue) {
-        Serial.println("[ParkingHandler] ERROR: Failed to create command queue!");
+        LOG_E(TAG_HANDLER, "Failed to create command queue!");
     }
 }
 
@@ -43,7 +46,7 @@ bool ParkingHandler::sendParking(const Parking &msg) {
     pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
 
     if (!pb_encode(&stream, Parking_fields, &msg)) {
-        Serial.printf("[ParkingHandler] Encode failed: %s\n", PB_GET_ERROR(&stream));
+        LOG_E(TAG_HANDLER, "Encode failed: %s", PB_GET_ERROR(&stream));
         return false;
     }
 
@@ -88,7 +91,7 @@ void ParkingHandler::sendDeviceStatus() {
     status.uptime_seconds = millis() / 1000;
 
     if (sendParking(msg)) {
-        Serial.println("Status sent");
+        LOG_I(TAG_HANDLER, "Status sent");
     }
 }
 
@@ -98,7 +101,7 @@ void ParkingHandler::sendParkingStatus(const ParkingStatus &status) {
     msg.payload.parking_status = status;
 
     if (sendParking(msg)) {
-        Serial.printf("[ParkingHandler] ParkingStatus sent (%d slots)\n", status.slots_count);
+        LOG_I(TAG_HANDLER, "ParkingStatus sent (%d slots)", status.slots_count);
     }
 }
 
@@ -141,7 +144,7 @@ void ParkingHandler::sendParkingEvent(const ParkingEvent &event) {
     msg.payload.parking_event = event;
 
     if (sendParking(msg)) {
-        Serial.printf("[ParkingHandler] ParkingEvent sent (pallet=%u, type=%d)\n", event.pallet_id,
+        LOG_I(TAG_HANDLER, "ParkingEvent sent (pallet=%u, type=%d)", event.pallet_id,
                       event.event_type);
     }
 }
@@ -166,11 +169,11 @@ void ParkingHandler::handleBinaryData(const uint8_t *data, size_t len) {
     pb_istream_t stream = pb_istream_from_buffer(data, len);
 
     if (!pb_decode(&stream, Parking_fields, &msg)) {
-        Serial.printf("[ParkingHandler] Decode failed: %s\n", PB_GET_ERROR(&stream));
+        LOG_E(TAG_HANDLER, "Decode failed: %s", PB_GET_ERROR(&stream));
         return;
     }
 
-    Serial.printf("[ParkingHandler] Received payload type: %d\n", (int)msg.which_payload);
+    LOG_D(TAG_HANDLER, "Received payload type: %d", (int)msg.which_payload);
 
     switch (msg.which_payload) {
     case Parking_wifi_scanning_tag:
@@ -186,18 +189,18 @@ void ParkingHandler::handleBinaryData(const uint8_t *data, size_t len) {
         break;
 
     default:
-        Serial.printf("[ParkingHandler] Unhandled payload type: %d\n", (int)msg.which_payload);
+        LOG_W(TAG_HANDLER, "Unhandled payload type: %d", (int)msg.which_payload);
         break;
     }
 }
 
 void ParkingHandler::sendWifiScanResults(int n) {
     (void)n;
-    Serial.println("[ParkingHandler] ScanResults logic disabled by comment");
+    LOG_D(TAG_HANDLER, "ScanResults logic disabled by comment");
 }
 
 void ParkingHandler::handleWifiScanning() {
-    Serial.println("[ParkingHandler] WifiScanning logic disabled by comment");
+    LOG_D(TAG_HANDLER, "WifiScanning logic disabled by comment");
 }
 
 void ParkingHandler::loop() {
@@ -225,7 +228,7 @@ void ParkingHandler::loop() {
 }
 
 void ParkingHandler::handleWifiConfig(const WifiConfig &config) {
-    Serial.printf("[ParkingHandler] WiFi config received - AP: '%s', STA: '%s'\n", config.ap_ssid,
+    LOG_I(TAG_HANDLER, "WiFi config received - AP: '%s', STA: '%s'", config.ap_ssid,
                   config.sta_ssid);
 
     // Load current prefs as base
@@ -252,14 +255,14 @@ void ParkingHandler::handleWifiConfig(const WifiConfig &config) {
 
     // Apply AP changes if needed
     if (apChanged) {
-        Serial.println("[ParkingHandler] AP config changed, restarting AP...");
+        LOG_I(TAG_HANDLER, "AP config changed, restarting AP...");
         _wifiManager.applyApConfig(prefs);
     }
 
     // STA is disabled, do not connect to STA even if config is provided
     if (strlen(config.sta_ssid) > 0) {
         _wifiManager.connectSta(config.sta_ssid, config.sta_password);
-        Serial.println("[ParkingHandler] STA support disabled; ignoring STA connect request.");
+        LOG_W(TAG_HANDLER, "STA support disabled; ignoring STA connect request.");
     }
 
     sendDeviceStatus();

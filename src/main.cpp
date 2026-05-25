@@ -15,6 +15,8 @@
 
 SET_LOOP_TASK_STACK_SIZE(16384);
 
+static const char *TAG_MAIN = "MAIN";
+
 WebManager webManager;
 WifiManager wifiManager;
 ParkingHandler parkingHandler(wifiManager);
@@ -24,7 +26,7 @@ void setup() {
     Serial2.begin(115200, SERIAL_8N1, PIN_UART_RX2, PIN_UART_TX2);
     Serial1.begin(115200, SERIAL_8N1, PIN_UART_RX1, PIN_UART_TX1);
 
-    LOG_I_INLINE("MAIN", "Setup ");
+    LOG_I_INLINE(TAG_MAIN, "Setup ");
 
     wifiManager.begin();
     webManager.begin();
@@ -54,10 +56,10 @@ void setup() {
 
     initParkingPositions();
 
-    LOG_I_INLINE("MAIN", "\033[0;32m completed! \033[0m");
+    LOG_I_INLINE(TAG_MAIN, "\033[0;32m completed! \033[0m");
     don_duong_vet_can(1, 4);
     don_duong_vet_can(2, 4);
-    LOG("MAIN", "\033[0;32m Parking positions initialized \033[0m");
+    LOG(TAG_MAIN, "\033[0;32m Parking positions initialized \033[0m");
 
     beep(1);
 }
@@ -73,7 +75,7 @@ void loop() {
         return;
     }
 
-    LOG("MAIN", "RFID scanned: %s", uid.c_str());
+    LOG(TAG_MAIN, "RFID scanned: %s", uid.c_str());
 
     int vi_tri_tim_thay = -1;
     for (int i = 0; i < 10; i++) {

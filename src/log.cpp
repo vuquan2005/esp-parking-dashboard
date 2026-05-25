@@ -4,6 +4,7 @@
 static constexpr int kMaxInlineItems = 6;
 static constexpr uint32_t kLogTimeoutMs = 1000;
 static constexpr size_t kTagBufferSize = 32;
+static constexpr int kTagWidth = 13;
 
 static char g_last_tag[kTagBufferSize] = "";
 static log_level_t g_last_level = LOG_LEVEL_INFO;
@@ -21,8 +22,8 @@ static const char *const kLevelIcons[] = {"🛑", "⚠️ ", "ℹ️", "🔍"};
 static const char *const kLevelNames[] = {"E", "W", "I", "D"};
 
 static void write_prefix(log_level_t level, const char *tag, const char *message) {
-    Serial.printf("%s%s [%s][%s]\033[0m %s", kLevelColors[level], kLevelIcons[level],
-                  kLevelNames[level], tag, message);
+    Serial.printf("%s%s [%s][%-*s]\033[0m %s", kLevelColors[level], kLevelIcons[level],
+                  kLevelNames[level], kTagWidth, tag, message);
 }
 
 static void close_line_if_open(void) {
