@@ -88,8 +88,8 @@ void log_print_inline(log_level_t level, const char *tag, const char *format, ..
 
     if (!g_line_open) {
         write_prefix(level, tag, buffer);
-        g_line_open = false;
-        g_inline_count = 0;
+        g_line_open = true;
+        g_inline_count = 1;
     } else {
         Serial.printf(" -> %s", buffer);
         g_inline_count++;
