@@ -66,8 +66,6 @@ void loop() {
     parkingHandler.loop();
     webManager.loop();
 
-    vTaskDelay(pdMS_TO_TICKS(5));
-
     update_sensor();
 
     String uid = "";
