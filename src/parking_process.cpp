@@ -172,7 +172,7 @@ void day_den_sw(int row, int pallet, const String &huong, int sw_target) {
         update_sensor();
         if (millis() - timeout > 10000) {
             gui_lenh_motor("st");
-            LOG_E(TAG_MOTOR, "MOTOR NGANG KET");
+            LOG_E(TAG_MOTOR, "MOTOR NGANG KET: SW%d-%d KHONG HOAT DONG!", row, sw_target);
             return;
         }
         delay(10);
