@@ -44,7 +44,7 @@ void WebManager::begin() {
         request->send(response);
     });
 
-    server.onNotFound([](AsyncWebServerRequest *request) { request->redirect("/#/config"); });
+    server.onNotFound([](AsyncWebServerRequest *request) { request->redirect("/#/"); });
 
     ws.onEvent([this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
                       void *arg, uint8_t *data,
