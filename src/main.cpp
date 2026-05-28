@@ -57,6 +57,12 @@ void setup() {
     initParkingPositions();
 
     LOG_I_INLINE(TAG_MAIN, "\033[0;32m completed! \033[0m");
+
+    Serial.println();
+    Serial1.println();
+    Serial2.println();
+    delay(1000);
+
     don_duong_vet_can(1, 4);
     don_duong_vet_can(2, 4);
     LOG(TAG_MAIN, "\033[0;32m Parking positions initialized \033[0m");
