@@ -18,7 +18,7 @@ static const char *const kLevelColors[] = {
     "\033[0;32m", // INFO:  Xanh lá
     "\033[0;36m"  // DEBUG: Xanh dương (Cyan)
 };
-static const char *const kLevelIcons[] = {"🛑", "⚠️ ", "ℹ️", "🔍"};
+static const char *const kLevelIcons[] = {"", "", "", ""};
 static const char *const kLevelNames[] = {"E", "W", "I", "D"};
 
 static void write_prefix(log_level_t level, const char *tag, const char *message) {

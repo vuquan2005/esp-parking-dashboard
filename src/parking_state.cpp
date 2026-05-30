@@ -99,8 +99,6 @@ int movePalletInGrid(int PalletId, int direction) {
     return 0;
 }
 
-extern ParkingHandler parkingHandler;
-
 void sendCurrentParkingStatus() {
     parkingHandler.sendParkingStatus(Grid, 12, SlotStatus, 10);
 }

@@ -158,6 +158,9 @@ void update_sensor() {
             LOG_W_INLINE(TAG_PARSER, "Unknown packet format: %s", tin_nhan.c_str());
         }
     }
+
+    parkingHandler.loop();
+    webManager.loop();
 }
 
 void day_den_sw(int row, int pallet, const String &huong, int sw_target) {

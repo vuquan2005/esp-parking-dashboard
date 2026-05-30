@@ -3,6 +3,8 @@
 
 #include "parking.pb.h"
 #include "parking_handler.h"
+#include "websever.h"
+#include "wifimanager.h"
 #include <Arduino.h>
 
 struct O_Do {
@@ -32,6 +34,8 @@ void sendCurrentParkingStatus();
 void sendCurrentParkingEvent(uint32_t pallet_id, ParkingEvent_EventType event_type,
                              bool is_done = false);
 
+extern WebManager webManager;
+extern WifiManager wifiManager;
 extern ParkingHandler parkingHandler;
 
 #endif // PARKING_STATE_H
