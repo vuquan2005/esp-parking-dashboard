@@ -194,6 +194,7 @@ void day_den_sw(int row, int pallet, const String &huong, int sw_target) {
 
 void don_duong_vet_can(int row, int cot_trong_yc) {
     LOG_I(TAG_PATH, "--- DON DUONG T%d CHO COT %d ---", row, cot_trong_yc);
+    recalcStatus();
     if (cot_trong_yc == 1) {
         SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PROCESSING;
         SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_PENDING;
@@ -202,19 +203,20 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
 
         day_den_sw(row, 3, "NP", 4);
 
-        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_UNKNOWN;
+        recalcStatus();
         SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
 
         day_den_sw(row, 2, "NP", 3);
 
-        SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        recalcStatus();
         SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
 
         day_den_sw(row, 1, "NP", 2);
 
-        SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        recalcStatus();
         sendCurrentParkingStatus();
     } else if (cot_trong_yc == 2) {
         SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_PROCESSING;
@@ -224,19 +226,20 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
 
         day_den_sw(row, 1, "NT", 1);
 
-        SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        recalcStatus();
         SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
 
         day_den_sw(row, 3, "NP", 4);
 
-        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_UNKNOWN;
+        recalcStatus();
         SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
 
         day_den_sw(row, 2, "NP", 3);
 
-        SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        recalcStatus();
         sendCurrentParkingStatus();
     } else if (cot_trong_yc == 3) {
         SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_PROCESSING;
@@ -246,19 +249,20 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
 
         day_den_sw(row, 1, "NT", 1);
 
-        SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        recalcStatus();
         SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
 
         day_den_sw(row, 2, "NT", 2);
 
-        SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        recalcStatus();
         SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
 
         day_den_sw(row, 3, "NP", 4);
 
-        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_UNKNOWN;
+        recalcStatus();
         sendCurrentParkingStatus();
     } else if (cot_trong_yc == 4) {
         SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_PROCESSING;
@@ -268,19 +272,20 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
 
         day_den_sw(row, 1, "NT", 1);
 
-        SlotStatus[rowPallet2SlotIndex(row, 1)] = ParkingStatus_Status_UNKNOWN;
+        recalcStatus();
         SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_PROCESSING;
+        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PENDING;
         sendCurrentParkingStatus();
 
         day_den_sw(row, 2, "NT", 2);
 
-        SlotStatus[rowPallet2SlotIndex(row, 2)] = ParkingStatus_Status_UNKNOWN;
+        recalcStatus();
         SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
 
         day_den_sw(row, 3, "NT", 3);
 
-        SlotStatus[rowPallet2SlotIndex(row, 3)] = ParkingStatus_Status_UNKNOWN;
+        recalcStatus();
         sendCurrentParkingStatus();
     }
 }
@@ -321,6 +326,7 @@ void gui_xe(const String &uid) {
         return;
     }
 
+    recalcStatus();
     SlotStatus[slotIndex] = ParkingStatus_Status_PENDING;
     sendCurrentParkingStatus();
     sendCurrentParkingEvent(pallet_id, ParkingEvent_EventType_IN, false);
@@ -376,6 +382,7 @@ void lay_xe(int target) {
         return;
     }
 
+    recalcStatus();
     SlotStatus[slotIndex] = ParkingStatus_Status_PROCESSING;
     sendCurrentParkingStatus();
     sendCurrentParkingEvent(pallet_id, ParkingEvent_EventType_OUT, false);
