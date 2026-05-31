@@ -61,7 +61,7 @@ void setup() {
     Serial.println();
     Serial1.println();
     Serial2.println();
-    delay(5000);
+    delay(10000);
 
     don_duong_vet_can(1, 4);
     don_duong_vet_can(2, 4);
