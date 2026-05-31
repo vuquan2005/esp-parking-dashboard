@@ -1,5 +1,6 @@
 #include "rfid_reader.h"
 #include "log.h"
+#include "serial_motor_control.h"
 
 #include <Arduino.h>
 
@@ -70,6 +71,11 @@ bool readRfidFromSerial(String &uid) {
         tin_nhan.toUpperCase();
 
         if (tin_nhan.length() == 0) {
+            return false;
+        }
+
+        // Intercept and handle motor commands (e.g. 21NP, 23NT, 21KD, 21KU)
+        if (xu_ly_lenh_motor_serial0(tin_nhan)) {
             return false;
         }
 
