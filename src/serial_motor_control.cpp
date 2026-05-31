@@ -30,8 +30,9 @@ bool xu_ly_lenh_motor_serial0(const String &cmd) {
     int row = r_char - '0';
     int pallet = p_char - '0';
 
-    if (row < 1 || row > 3 || pallet < 1 || pallet > 4) {
-        LOG_E(TAG_SM_CTRL, "Tham so dong/pallet khong hop le: row=%d, pallet=%d", row, pallet);
+    // Khong chap nhan gia tri 0 hoac vuot qua gioi han (Hang: 1-3, Pallet: 1-4)
+    if (row == 0 || row > 3 || pallet == 0 || pallet > 4) {
+        LOG_E(TAG_SM_CTRL, "Tham so dong/pallet khong hop le (khong duoc bang 0 hoac vuot qua gioi han): row=%d, pallet=%d", row, pallet);
         return true; // Dinh dang phu hop nhung tham so sai, tiep tuc danh dau la da xu ly
     }
 
