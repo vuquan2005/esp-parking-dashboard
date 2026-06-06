@@ -40,26 +40,28 @@ static bool parseRfidPayload(const String &payload, String &uid) {
         return false;
     }
     int secondSep = payload.indexOf('|', 4);
-    if (secondSep < 0) {
-        return false;
-    }
+    // if (secondSep < 0) {
+    //     return false;
+    // }
     String uidString = payload.substring(4, secondSep);
-    String checksumString = payload.substring(secondSep + 1);
+    // String checksumString = payload.substring(secondSep + 1);
     uidString.trim();
-    checksumString.trim();
+    // checksumString.trim();
+
     uidString.toUpperCase();
-    checksumString.toUpperCase();
-    if (!isValidRfidUid(uidString) || checksumString.length() != 2) {
-        return false;
-    }
-    String expected = String(calculateUidChecksum(uidString), HEX);
-    expected.toUpperCase();
-    if (expected.length() == 1) {
-        expected = "0" + expected;
-    }
-    if (checksumString != expected) {
-        return false;
-    }
+    // checksumString.toUpperCase();
+
+    // if (!isValidRfidUid(uidString) /*|| checksumString.length() != 2*/) {
+    //     return false;
+    // }
+    // String expected = String(calculateUidChecksum(uidString), HEX);
+    // expected.toUpperCase();
+    // if (expected.length() == 1) {
+    //     expected = "0" + expected;
+    // }
+    // if (checksumString != expected) {
+    //     return false;
+    // }
     uid = uidString;
     return true;
 }
