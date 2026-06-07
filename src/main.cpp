@@ -66,16 +66,16 @@ void setup() {
     don_duong_vet_can(1, 1);
     don_duong_vet_can(2, 1);
 
-    motor_keo(2, 1, "KD");
+    motor_keo(2, 1, "KD", 1000);
 
-    motor_keo(2, 1, "KU");
-    motor_keo(2, 2, "KU");
-    motor_keo(2, 3, "KU");
-    
-    motor_keo(3, 1, "KU");
-    motor_keo(3, 2, "KU");
-    motor_keo(3, 3, "KU");
-    motor_keo(3, 4, "KU");
+    motor_keo(2, 1, "KU", 5000);
+    motor_keo(2, 2, "KU", 5000);
+    motor_keo(2, 3, "KU", 5000);
+
+    motor_keo(3, 1, "KU", 5000);
+    motor_keo(3, 2, "KU", 5000);
+    motor_keo(3, 3, "KU", 5000);
+    motor_keo(3, 4, "KU", 5000);
 
     LOG(TAG_MAIN, "\033[0;32m Parking positions initialized \033[0m");
 

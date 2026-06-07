@@ -163,11 +163,19 @@ void update_sensor() {
     webManager.loop();
 }
 
-void motor_keo(int t, int c, const String &huong) {
+void motor_keo(int t, int c, const String &huong, int timeOut) {
+    if (cam_bien_vi_tri[t][c])
+        return;
     gui_lenh_motor(String(t) + String(c) + String(huong));
     delay(300);
+    unsigned long timeout = millis();
     while (!cam_bien_vi_tri[t][c]) {
         update_sensor();
+        if (millis() - timeout > timeOut) {
+            gui_lenh_motor("st");
+            LOG_E(TAG_MOTOR, "MOTOR KEO KET: SW%d-%d KHONG HOAT DONG!", t, c);
+            return;
+        }
         delay(10);
     }
     gui_lenh_motor("st");
@@ -353,16 +361,28 @@ void gui_xe(const String &uid) {
         SlotStatus[slotIndex] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
 
-        motor_keo(1, c, "KD");
+        gui_lenh_motor(String(t) + String(c) + "KD");
+        delay(300);
+        while (!cam_bien_vi_tri[1][c]) {
+            update_sensor();
+            delay(10);
+        }
+        gui_lenh_motor("st");
     }
 
     mo_cong();
     cho_nguoi_dung_xac_nhan();
     dong_cong();
 
-    if(t > 1) {
-        motor_keo(t, c, "KU");
+    if (t > 1) {
+        gui_lenh_motor(String(t) + String(c) + "KU");
+        delay(300);
+        while (!cam_bien_vi_tri[t][c]) {
+            update_sensor();
+            delay(10);
+        }
     }
+    gui_lenh_motor("st");
 
     recalcStatus();
     sendCurrentParkingStatus();
@@ -397,15 +417,13 @@ void lay_xe(int target) {
         SlotStatus[slotIndex] = ParkingStatus_Status_PROCESSING;
         sendCurrentParkingStatus();
 
-        // gui_lenh_motor(String(t) + String(c) + "KD");
-        // delay(300);
-        // while (!cam_bien_vi_tri[1][c]) {
-        //     update_sensor();
-        //     delay(10);
-        // }
-        // gui_lenh_motor("st");
-
-        motor_keo(1, c, "KD");
+        gui_lenh_motor(String(t) + String(c) + "KD");
+        delay(300);
+        while (!cam_bien_vi_tri[1][c]) {
+            update_sensor();
+            delay(10);
+        }
+        gui_lenh_motor("st");
     }
 
     mo_cong();
@@ -413,7 +431,13 @@ void lay_xe(int target) {
     dong_cong();
 
     if (t > 1) {
-        motor_keo(t, c, "KU");
+        gui_lenh_motor(String(t) + String(c) + "KU");
+        delay(300);
+        while (!cam_bien_vi_tri[t][c]) {
+            update_sensor();
+            delay(10);
+        }
+        gui_lenh_motor("st");
     }
 
     ds_o[target].ma_the_uid = "";
