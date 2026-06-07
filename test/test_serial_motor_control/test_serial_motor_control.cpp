@@ -1,5 +1,6 @@
-#include <unity.h>
+#include "../../src/log.h"
 #include <Arduino.h>
+#include <unity.h>
 
 // 1. Declare & Mock external variables and functions used by serial_motor_control.cpp
 bool sw[4][5];
@@ -39,8 +40,8 @@ void day_den_sw(int row, int pallet, const String &huong, int sw_target) {
 
 // Stubs for logging functions to avoid linking issues
 extern "C" {
-void log_print(int level, const char *tag, const char *format, ...) {}
-void log_print_inline(int level, const char *tag, const char *format, ...) {}
+void log_print(log_level_t level, const char *tag, const char *format, ...) {}
+void log_print_inline(log_level_t level, const char *tag, const char *format, ...) {}
 void log_flush(void) {}
 }
 
@@ -52,7 +53,7 @@ void setUp(void) {
     last_motor_cmd = "";
     call_count_gui_lenh_motor = 0;
     call_count_update_sensor = 0;
-    
+
     last_day_den_sw_row = -1;
     last_day_den_sw_pallet = -1;
     last_day_den_sw_huong = "";
@@ -66,8 +67,7 @@ void setUp(void) {
     }
 }
 
-void tearDown(void) {
-}
+void tearDown(void) {}
 
 // Test validation of various input formats
 void test_invalid_command_formats(void) {
@@ -88,7 +88,7 @@ void test_invalid_command_formats(void) {
 void test_out_of_range_parameters(void) {
     TEST_ASSERT_TRUE(xu_ly_lenh_motor_serial0("41NP")); // Row 4 (1-3 valid)
     TEST_ASSERT_TRUE(xu_ly_lenh_motor_serial0("25NP")); // Pallet 5 (1-4 valid)
-    
+
     // Gia tri 0 cho hang hoac cot (pallet) khong hop le
     TEST_ASSERT_TRUE(xu_ly_lenh_motor_serial0("01NP")); // Row 0 is invalid
     TEST_ASSERT_TRUE(xu_ly_lenh_motor_serial0("20NP")); // Pallet 0 is invalid
@@ -120,8 +120,10 @@ void test_vertical_movement_parsing(void) {
 
     TEST_ASSERT_TRUE(xu_ly_lenh_motor_serial0("23KD"));
     TEST_ASSERT_EQUAL_STRING("st", last_motor_cmd.c_str()); // Stopped after reaching sensor
-    TEST_ASSERT_EQUAL(2, call_count_gui_lenh_motor); // 1: gui_lenh_motor("23KD"), 2: gui_lenh_motor("st")
-    TEST_ASSERT_EQUAL(0, call_count_update_sensor); // did not need to poll because sensor was already true
+    TEST_ASSERT_EQUAL(
+        2, call_count_gui_lenh_motor); // 1: gui_lenh_motor("23KD"), 2: gui_lenh_motor("st")
+    TEST_ASSERT_EQUAL(
+        0, call_count_update_sensor); // did not need to poll because sensor was already true
 
     // Keo Tren (KU): row 3, pallet 2 -> target row should be row = 3
     // Here we let sensor start at false, and update_sensor mock will set it to true
@@ -142,5 +144,4 @@ void setup() {
     UNITY_END();
 }
 
-void loop() {
-}
+void loop() {}

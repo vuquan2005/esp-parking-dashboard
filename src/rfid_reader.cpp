@@ -6,8 +6,9 @@
 
 static const char *TAG_RFID = "RFID";
 
-static const unsigned long RFID_DEBOUNCE_MS = 5000;
+static const unsigned long RFID_DEBOUNCE_MS = 1000;
 static String lastRfidUid = "";
+static String lastRfidCounter = "";
 static unsigned long lastRfidMillis = 0;
 
 static bool isValidRfidUid(const String &uid) {
@@ -43,17 +44,35 @@ static bool parseRfidPayload(const String &payload, String &uid) {
     if (secondSep < 0) {
         return false;
     }
+    int thirdSep = payload.indexOf('|', secondSep + 1);
+
     String uidString = payload.substring(4, secondSep);
-    String checksumString = payload.substring(secondSep + 1);
+    String checksumString;
+    String counterString;
+    if (thirdSep < 0) {
+        checksumString = payload.substring(secondSep + 1);
+    } else {
+        checksumString = payload.substring(secondSep + 1, thirdSep);
+        counterString = payload.substring(thirdSep + 1);
+    }
     uidString.trim();
     checksumString.trim();
+    counterString.trim();
 
     uidString.toUpperCase();
     checksumString.toUpperCase();
+    counterString.toUpperCase();
 
-    if (!isValidRfidUid(uidString) /*|| checksumString.length() != 2*/) {
+    if (!isValidRfidUid(uidString) || checksumString.length() != 2) {
         return false;
     }
+
+    if (thirdSep >= 0) {
+        if (counterString.length() == 0 || counterString == lastRfidCounter) {
+            return false;
+        }
+    }
+
     String expected = String(calculateUidChecksum(uidString), HEX);
     expected.toUpperCase();
     if (expected.length() == 1) {
@@ -61,6 +80,10 @@ static bool parseRfidPayload(const String &payload, String &uid) {
     }
     if (checksumString != expected) {
         return false;
+    }
+
+    if (thirdSep >= 0) {
+        lastRfidCounter = counterString;
     }
     uid = uidString;
     return true;
