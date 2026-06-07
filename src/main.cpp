@@ -118,10 +118,10 @@ void loop() {
     }
 
     if (vi_tri_tim_thay != -1) {
-        lay_xe(vi_tri_tim_thay);
+        lay_xe(vi_tri_tim_thay, isAuto);
         uart_flush_input(UART_NUM_0);
     } else {
-        gui_xe(uid);
+        gui_xe(uid, isAuto);
         uart_flush_input(UART_NUM_0);
     }
 

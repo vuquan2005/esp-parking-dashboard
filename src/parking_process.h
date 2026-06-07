@@ -19,9 +19,9 @@ void update_sensor();
 void motor_keo(int t, int c, const String &huong, int timeOut);
 void day_den_sw(int row, int pallet, const String &huong, int sw_target);
 void don_duong_vet_can(int row, int cot_trong_yc);
-void cho_nguoi_dung_xac_nhan();
-void gui_xe(const String &uid);
-void lay_xe(int target);
+void cho_nguoi_dung_xac_nhan(bool isAuto = false);
+void gui_xe(const String &uid, bool isAuto = false);
+void lay_xe(int target, bool isAuto = false);
 
 extern WebManager webManager;
 extern WifiManager wifiManager;

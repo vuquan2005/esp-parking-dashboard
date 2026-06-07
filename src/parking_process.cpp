@@ -13,12 +13,16 @@ static const char *TAG_BUTTON = "BUTTON";
 
 static const unsigned long BUTTON_DEBOUNCE_MS = 50;
 static const unsigned long BUTTON_PRESS_TIMEOUT_MS = 20000;
+static const unsigned int BUTTON_PRESS_AUTO_TIME_OUT = 2000;
 
-static bool waitForButtonPress() {
+static bool waitForButtonPress(unsigned long timeoutMs) {
+    if (timeoutMs == 0) {
+        return true;
+    }
     unsigned long pressedAt = 0;
     unsigned long startTime = millis();
 
-    while (millis() - startTime < BUTTON_PRESS_TIMEOUT_MS) {
+    while (millis() - startTime < timeoutMs) {
         update_sensor();
         bool pressed = digitalRead(PIN_NUT_XAC_NHAN) == LOW;
         if (pressed) {
@@ -309,19 +313,24 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
     }
 }
 
-void cho_nguoi_dung_xac_nhan() {
+void cho_nguoi_dung_xac_nhan(bool isAuto) {
+    unsigned long timeoutMs = isAuto ? BUTTON_PRESS_AUTO_TIME_OUT : BUTTON_PRESS_TIMEOUT_MS;
     LOG_I_INLINE(TAG_BUTTON, "Wait for button press...");
-    if (!waitForButtonPress()) {
+    if (!waitForButtonPress(timeoutMs)) {
         LOG_E(TAG_BUTTON, "TIMEOUT CHO NUT XAC NHAN!");
         return;
     }
 
-    LOG_I_INLINE(TAG_BUTTON, "\033[0;32m Button pressed! \033[0m");
-    beep(2);
-    delay(500);
+    if (!isAuto) {
+        LOG_I_INLINE(TAG_BUTTON, "\033[0;32m Button pressed! \033[0m");
+        beep(2);
+        delay(500);
+    } else {
+        LOG_I_INLINE(TAG_BUTTON, "Auto confirmation.");
+    }
 }
 
-void gui_xe(const String &uid) {
+void gui_xe(const String &uid, bool isAuto) {
     int target = -1;
     for (int i = 0; i < 10; i++) {
         if (ds_o[i].ma_the_uid == "") {
@@ -372,7 +381,7 @@ void gui_xe(const String &uid) {
     }
 
     mo_cong();
-    cho_nguoi_dung_xac_nhan();
+    cho_nguoi_dung_xac_nhan(isAuto);
     dong_cong();
 
     if (t > 1) {
@@ -391,7 +400,7 @@ void gui_xe(const String &uid) {
     beep(1);
 }
 
-void lay_xe(int target) {
+void lay_xe(int target, bool isAuto) {
     int t = ds_o[target].row;
     int c = ds_o[target].col;
     int pallet_id = rowPallet2SlotID(t, c);
@@ -428,7 +437,7 @@ void lay_xe(int target) {
     }
 
     mo_cong();
-    cho_nguoi_dung_xac_nhan();
+    cho_nguoi_dung_xac_nhan(isAuto);
     dong_cong();
 
     if (t > 1) {
