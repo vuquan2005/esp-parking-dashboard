@@ -21,6 +21,18 @@ WebManager webManager;
 WifiManager wifiManager;
 ParkingHandler parkingHandler(wifiManager);
 
+// -1 for non-delay functions, otherwise delay in ms
+void handleDelay(unsigned long ms) {
+    unsigned long start = millis();
+    parkingHandler.loop();
+    webManager.loop();
+    while (millis() - start < ms) {
+        parkingHandler.loop();
+        webManager.loop();
+        delay(5);
+    }
+}
+
 void setup() {
     Serial.begin(115200);
     Serial2.begin(115200, SERIAL_8N1, PIN_UART_RX2, PIN_UART_TX2);
@@ -61,7 +73,8 @@ void setup() {
     Serial.println();
     Serial1.println();
     Serial2.println();
-    delay(10000);
+
+    handleDelay(9000);
 
     don_duong_vet_can(1, 1);
     don_duong_vet_can(2, 1);

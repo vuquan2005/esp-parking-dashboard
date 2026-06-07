@@ -19,6 +19,7 @@ static bool waitForButtonPress() {
     unsigned long startTime = millis();
 
     while (millis() - startTime < BUTTON_PRESS_TIMEOUT_MS) {
+        update_sensor();
         bool pressed = digitalRead(PIN_NUT_XAC_NHAN) == LOW;
         if (pressed) {
             if (pressedAt == 0) {
