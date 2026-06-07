@@ -3,6 +3,7 @@
 #include "serial_motor_control.h"
 
 #include <Arduino.h>
+#include <ctype.h>
 
 static const char *TAG_RFID = "RFID";
 
@@ -11,85 +12,145 @@ static String lastRfidUid = "";
 static String lastRfidCounter = "";
 static unsigned long lastRfidMillis = 0;
 
-static bool isValidRfidUid(const String &uid) {
-    if (uid.length() != 8) {
+static bool isValidRfidUid(const char *uid, size_t len) {
+    if (len != 8) {
         return false;
     }
-    for (size_t i = 0; i < uid.length(); ++i) {
-        if (!isxdigit(uid[i])) {
+    for (size_t i = 0; i < len; ++i) {
+        if (!isxdigit((unsigned char)uid[i])) {
             return false;
         }
     }
     return true;
 }
 
-static uint8_t calculateUidChecksum(const String &uidString) {
-    if (uidString.length() != 8) {
+static uint8_t calculateUidChecksum(const char *uidString, size_t len) {
+    if (len != 8) {
         return 0;
     }
-    String normalized = uidString;
-    normalized.toUpperCase();
     uint8_t checksum = 0;
-    for (size_t i = 0; i < normalized.length(); ++i) {
-        checksum += normalized[i];
+    for (size_t i = 0; i < len; ++i) {
+        checksum += (uint8_t)toupper((unsigned char)uidString[i]);
     }
     return checksum;
 }
 
-static bool parseRfidPayload(const String &payload, String &uid) {
-    if (!payload.startsWith("UID|")) {
-        return false;
+static bool copyAndTrimUpper(const char *start, size_t length, char *dest, size_t destSize) {
+    size_t begin = 0;
+    while (begin < length && isspace((unsigned char)start[begin])) {
+        begin++;
     }
-    int secondSep = payload.indexOf('|', 4);
-    if (secondSep < 0) {
-        return false;
+    size_t end = length;
+    while (end > begin && isspace((unsigned char)start[end - 1])) {
+        end--;
     }
-    int thirdSep = payload.indexOf('|', secondSep + 1);
 
-    String uidString = payload.substring(4, secondSep);
-    String checksumString;
-    String counterString;
-    if (thirdSep < 0) {
-        checksumString = payload.substring(secondSep + 1);
-    } else {
-        checksumString = payload.substring(secondSep + 1, thirdSep);
-        counterString = payload.substring(thirdSep + 1);
-    }
-    uidString.trim();
-    checksumString.trim();
-    counterString.trim();
-
-    uidString.toUpperCase();
-    checksumString.toUpperCase();
-    counterString.toUpperCase();
-
-    if (!isValidRfidUid(uidString) || checksumString.length() != 2) {
+    size_t trimmedLen = end - begin;
+    if (trimmedLen >= destSize) {
         return false;
     }
 
-    if (thirdSep >= 0) {
-        if (counterString.length() == 0 || counterString == lastRfidCounter) {
+    for (size_t i = 0; i < trimmedLen; ++i) {
+        dest[i] = toupper((unsigned char)start[begin + i]);
+    }
+    dest[trimmedLen] = '\0';
+    return true;
+}
+
+static bool parseRfidPayload(const String &payload, String &uid, bool &isAuto) {
+    const char *data = payload.c_str();
+    size_t payloadLen = payload.length();
+    if (payloadLen == 0) {
+        return false;
+    }
+
+    const char *fieldStarts[5];
+    size_t fieldLens[5];
+    size_t fieldCount = 0;
+    const char *p = data;
+    const char *fieldStart = data;
+
+    while (*p) {
+        if (*p == '|') {
+            if (fieldCount >= 5) {
+                return false;
+            }
+            fieldStarts[fieldCount] = fieldStart;
+            fieldLens[fieldCount] = p - fieldStart;
+            fieldCount++;
+            p++;
+            fieldStart = p;
+            continue;
+        }
+        p++;
+    }
+
+    if (fieldCount >= 5) {
+        return false;
+    }
+    fieldStarts[fieldCount] = fieldStart;
+    fieldLens[fieldCount] = p - fieldStart;
+    fieldCount++;
+
+    if (fieldCount < 3 || fieldCount > 5) {
+        return false;
+    }
+
+    char field0[4] = {0};
+    char uidString[9] = {0};
+    char checksumString[3] = {0};
+    char counterString[17] = {0};
+    char isAutoString[6] = {0};
+
+    if (!copyAndTrimUpper(fieldStarts[0], fieldLens[0], field0, sizeof(field0)) || strcmp(field0, "UID") != 0) {
+        return false;
+    }
+
+    if (!copyAndTrimUpper(fieldStarts[1], fieldLens[1], uidString, sizeof(uidString)) || !isValidRfidUid(uidString, strlen(uidString))) {
+        return false;
+    }
+
+    if (!copyAndTrimUpper(fieldStarts[2], fieldLens[2], checksumString, sizeof(checksumString)) || strlen(checksumString) != 2) {
+        return false;
+    }
+
+    if (fieldCount >= 4) {
+        if (!copyAndTrimUpper(fieldStarts[3], fieldLens[3], counterString, sizeof(counterString)) || strlen(counterString) == 0) {
             return false;
         }
     }
 
-    String expected = String(calculateUidChecksum(uidString), HEX);
-    expected.toUpperCase();
-    if (expected.length() == 1) {
-        expected = "0" + expected;
+    if (fieldCount == 5) {
+        if (!copyAndTrimUpper(fieldStarts[4], fieldLens[4], isAutoString, sizeof(isAutoString))) {
+            return false;
+        }
     }
-    if (checksumString != expected) {
+
+    if (fieldCount >= 4 && lastRfidCounter.equals(counterString)) {
         return false;
     }
 
-    if (thirdSep >= 0) {
-        lastRfidCounter = counterString;
+    uint8_t checksum = calculateUidChecksum(uidString, strlen(uidString));
+    char expected[3] = {0};
+    const char *hexDigits = "0123456789ABCDEF";
+    expected[0] = hexDigits[(checksum >> 4) & 0x0F];
+    expected[1] = hexDigits[checksum & 0x0F];
+
+    if (checksumString[0] != expected[0] || checksumString[1] != expected[1]) {
+        return false;
     }
-    uid = uidString;
+
+    if (fieldCount >= 4) {
+        lastRfidCounter = counterString;
+    } else {
+        lastRfidCounter = "";
+    }
+    uid = String(uidString);
+    isAuto = (fieldCount == 5 && strcmp(isAutoString, "TRUE") == 0);
     return true;
 }
 
-bool readRfidFromSerial(String &uid) {
+bool readRfidFromSerial(String &uid, bool &isAuto) {
     while (Serial.available() > 0) {
         String tin_nhan = Serial.readStringUntil('\n');
         tin_nhan.trim();
@@ -105,7 +166,7 @@ bool readRfidFromSerial(String &uid) {
         }
 
         String parsedUid;
-        if (!tin_nhan.startsWith("UID|") || !parseRfidPayload(tin_nhan, parsedUid)) {
+        if (!tin_nhan.startsWith("UID|") || !parseRfidPayload(tin_nhan, parsedUid, isAuto)) {
             LOG_E(TAG_RFID, "invalid payload: %s", tin_nhan.c_str());
             return false;
         }

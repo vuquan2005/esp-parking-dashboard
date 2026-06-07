@@ -102,7 +102,8 @@ void loop() {
     update_sensor();
 
     String uid = "";
-    if (!readRfidFromSerial(uid)) {
+    bool isAuto = false;
+    if (!readRfidFromSerial(uid, isAuto)) {
         return;
     }
 
