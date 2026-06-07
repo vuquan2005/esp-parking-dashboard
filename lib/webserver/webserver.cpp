@@ -44,7 +44,44 @@ void WebManager::begin() {
         request->send(response);
     });
 
-    server.onNotFound([](AsyncWebServerRequest *request) { request->send(204); });
+    // ── Fake Internet Response ────────────────────────────────
+    server.on("/generate_204", HTTP_GET,
+              [](AsyncWebServerRequest *request) { request->send(204); });
+    server.on("/gen_204", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(204); });
+
+    const char *APPLE_SUCCESS = "<HTML><HEAD><TITLE>Success</TITLE></HEAD>"
+                                "<BODY>Success</BODY></HTML>";
+
+    server.on("/hotspot-detect.html", HTTP_GET, [APPLE_SUCCESS](AsyncWebServerRequest *request) {
+        request->send(200, "text/html", APPLE_SUCCESS);
+    });
+    server.on("/library/test/success.html", HTTP_GET, [APPLE_SUCCESS](AsyncWebServerRequest *request) {
+        request->send(200, "text/html", APPLE_SUCCESS);
+    });
+    server.on("/success.html", HTTP_GET, [APPLE_SUCCESS](AsyncWebServerRequest *request) {
+        request->send(200, "text/html", APPLE_SUCCESS);
+    });
+    server.on("/connecttest.txt", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(200, "text/plain", "Microsoft Connect Test");
+    });
+    server.on("/ncsi.txt", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(200, "text/plain", "Microsoft NCSI");
+    });
+    server.on("/redirect", HTTP_GET, [](AsyncWebServerRequest *request) {
+        AsyncWebServerResponse *r = request->beginResponse(200, "text/plain", "");
+        r->addHeader("Cache-Control", "no-cache");
+        request->send(r);
+    });
+    server.on("/check_network_status.txt", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(200, "text/plain", "NetworkManager is online\n");
+    });
+    server.on("/nm", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(200, "text/plain", "NetworkManager is online\n");
+    });
+    server.onNotFound([](AsyncWebServerRequest *request) {
+        request->redirect(String("http://") + WiFi.softAPIP().toString() + "/");
+    });
+    //
 
     ws.onEvent([this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
                       void *arg, uint8_t *data,
