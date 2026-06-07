@@ -56,47 +56,43 @@ void test_parseRfidPayload(void) {
     String uidResult;
     bool isAutoResult = false;
 
-    // Valid payload with counter
-    TEST_ASSERT_TRUE(parseRfidPayload("UID|12345678|A4|1", uidResult, isAutoResult));
+    // Simplest form (2 fields): UID|xxxxx
+    TEST_ASSERT_TRUE(parseRfidPayload("UID|12345678", uidResult, isAutoResult));
     TEST_ASSERT_EQUAL_STRING("12345678", uidResult.c_str());
     TEST_ASSERT_FALSE(isAutoResult);
 
-    // Duplicate counter should be rejected
+    // Invalid format: 4 fields (legacy) should be rejected
     TEST_ASSERT_FALSE(parseRfidPayload("UID|12345678|A4|1", uidResult, isAutoResult));
 
-    // New counter value should be accepted again
-    TEST_ASSERT_TRUE(parseRfidPayload("UID|12345678|A4|2", uidResult, isAutoResult));
-    TEST_ASSERT_EQUAL_STRING("12345678", uidResult.c_str());
-    TEST_ASSERT_FALSE(isAutoResult);
+    // Invalid format: 3 fields (legacy) should be rejected
+    TEST_ASSERT_FALSE(parseRfidPayload("UID|12345678|A4", uidResult, isAutoResult));
 
     // Invalid format (missing prefix)
     TEST_ASSERT_FALSE(parseRfidPayload("12345678|A4|1", uidResult, isAutoResult));
 
-    // Legacy format without counter should still be accepted
-    TEST_ASSERT_TRUE(parseRfidPayload("UID|12345678|A4", uidResult, isAutoResult));
-    TEST_ASSERT_EQUAL_STRING("12345678", uidResult.c_str());
-    TEST_ASSERT_FALSE(isAutoResult);
-
-    // Payload with empty counter after separator should be rejected
+    // Payload with empty counter after separator should be rejected (5 fields but empty fields? Actually not 5 fields, but let's test invalid field count)
     TEST_ASSERT_FALSE(parseRfidPayload("UID|12345678|A4|", uidResult, isAutoResult));
 
-    // Incorrect checksum
-    TEST_ASSERT_FALSE(parseRfidPayload("UID|12345678|A3|3", uidResult, isAutoResult));
-
-    // Valid payload with counter and isAuto = TRUE
+    // Valid full payload (5 fields) with counter and isAuto = TRUE
     TEST_ASSERT_TRUE(parseRfidPayload("UID|12345678|A4|3|TRUE", uidResult, isAutoResult));
     TEST_ASSERT_EQUAL_STRING("12345678", uidResult.c_str());
     TEST_ASSERT_TRUE(isAutoResult);
 
-    // Valid payload with counter and isAuto = FALSE
+    // Duplicate counter for 5 fields should be rejected
+    TEST_ASSERT_FALSE(parseRfidPayload("UID|12345678|A4|3|TRUE", uidResult, isAutoResult));
+
+    // Valid full payload with new counter and isAuto = FALSE
     TEST_ASSERT_TRUE(parseRfidPayload("UID|12345678|A4|4|FALSE", uidResult, isAutoResult));
     TEST_ASSERT_EQUAL_STRING("12345678", uidResult.c_str());
     TEST_ASSERT_FALSE(isAutoResult);
 
-    // Valid payload with counter and isAuto = other values (treated as false)
+    // Valid full payload with new counter and isAuto = other values (treated as false)
     TEST_ASSERT_TRUE(parseRfidPayload("UID|12345678|A4|5|MAYBE", uidResult, isAutoResult));
     TEST_ASSERT_EQUAL_STRING("12345678", uidResult.c_str());
     TEST_ASSERT_FALSE(isAutoResult);
+
+    // Incorrect checksum in 5 fields
+    TEST_ASSERT_FALSE(parseRfidPayload("UID|12345678|A3|6|TRUE", uidResult, isAutoResult));
 }
 
 void setup() {

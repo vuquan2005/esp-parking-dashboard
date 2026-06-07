@@ -92,15 +92,12 @@ static bool parseRfidPayload(const String &payload, String &uid, bool &isAuto) {
     fieldLens[fieldCount] = p - fieldStart;
     fieldCount++;
 
-    if (fieldCount < 3 || fieldCount > 5) {
+    if (fieldCount != 2 && fieldCount != 5) {
         return false;
     }
 
     char field0[4] = {0};
     char uidString[9] = {0};
-    char checksumString[3] = {0};
-    char counterString[17] = {0};
-    char isAutoString[6] = {0};
 
     if (!copyAndTrimUpper(fieldStarts[0], fieldLens[0], field0, sizeof(field0)) || strcmp(field0, "UID") != 0) {
         return false;
@@ -110,23 +107,30 @@ static bool parseRfidPayload(const String &payload, String &uid, bool &isAuto) {
         return false;
     }
 
+    if (fieldCount == 2) {
+        lastRfidCounter = "";
+        uid = String(uidString);
+        isAuto = false;
+        return true;
+    }
+
+    char checksumString[3] = {0};
+    char counterString[17] = {0};
+    char isAutoString[6] = {0};
+
     if (!copyAndTrimUpper(fieldStarts[2], fieldLens[2], checksumString, sizeof(checksumString)) || strlen(checksumString) != 2) {
         return false;
     }
 
-    if (fieldCount >= 4) {
-        if (!copyAndTrimUpper(fieldStarts[3], fieldLens[3], counterString, sizeof(counterString)) || strlen(counterString) == 0) {
-            return false;
-        }
+    if (!copyAndTrimUpper(fieldStarts[3], fieldLens[3], counterString, sizeof(counterString)) || strlen(counterString) == 0) {
+        return false;
     }
 
-    if (fieldCount == 5) {
-        if (!copyAndTrimUpper(fieldStarts[4], fieldLens[4], isAutoString, sizeof(isAutoString))) {
-            return false;
-        }
+    if (!copyAndTrimUpper(fieldStarts[4], fieldLens[4], isAutoString, sizeof(isAutoString))) {
+        return false;
     }
 
-    if (fieldCount >= 4 && lastRfidCounter.equals(counterString)) {
+    if (lastRfidCounter.equals(counterString)) {
         return false;
     }
 
@@ -140,13 +144,9 @@ static bool parseRfidPayload(const String &payload, String &uid, bool &isAuto) {
         return false;
     }
 
-    if (fieldCount >= 4) {
-        lastRfidCounter = counterString;
-    } else {
-        lastRfidCounter = "";
-    }
+    lastRfidCounter = counterString;
     uid = String(uidString);
-    isAuto = (fieldCount == 5 && strcmp(isAutoString, "TRUE") == 0);
+    isAuto = (strcmp(isAutoString, "TRUE") == 0);
     return true;
 }
 
