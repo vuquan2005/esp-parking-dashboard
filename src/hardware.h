@@ -14,6 +14,6 @@
 
 static const int KENH_PWM = 0;
 static const int TAN_SO_PWM = 50;
-static const int DO_PHAN_GIAI = 16;
+static const int DO_PHAN_GIAI = 12;
 
 #endif // HARDWARE_H

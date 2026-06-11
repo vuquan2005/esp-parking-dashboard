@@ -69,7 +69,7 @@ void gui_lenh_motor(const String &lenh) {
 }
 
 void dieu_khien_goc_servo(int goc) {
-    int duty = map(goc, 0, 180, 1638, 8192);
+    int duty = map(goc, 0, 180, 102, 512);
     ledcWrite(KENH_PWM, duty);
 }
 
