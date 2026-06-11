@@ -92,7 +92,7 @@ static bool parseRfidPayload(const String &payload, String &uid) {
     fieldLens[fieldCount] = p - fieldStart;
     fieldCount++;
 
-    if (fieldCount != 2 && fieldCount != 4) {
+    if (fieldCount != 2 && fieldCount != 3 && fieldCount != 4) {
         return false;
     }
 
@@ -116,15 +116,11 @@ static bool parseRfidPayload(const String &payload, String &uid) {
     char checksumString[3] = {0};
     char counterString[17] = {0};
 
-    if (!copyAndTrimUpper(fieldStarts[2], fieldLens[2], checksumString, sizeof(checksumString)) || strlen(checksumString) != 2) {
-        return false;
-    }
-
-    if (!copyAndTrimUpper(fieldStarts[3], fieldLens[3], counterString, sizeof(counterString)) || strlen(counterString) == 0) {
-        return false;
-    }
-
     if (lastRfidCounter.equals(counterString)) {
+        return false;
+    }
+
+    if (!copyAndTrimUpper(fieldStarts[2], fieldLens[2], checksumString, sizeof(checksumString)) || strlen(checksumString) != 2) {
         return false;
     }
 
@@ -135,6 +131,16 @@ static bool parseRfidPayload(const String &payload, String &uid) {
     expected[1] = hexDigits[checksum & 0x0F];
 
     if (checksumString[0] != expected[0] || checksumString[1] != expected[1]) {
+        return false;
+    }
+
+    if (fieldCount == 3) {
+        lastRfidCounter = "";
+        uid = String(uidString);
+        return true;
+    }
+
+    if (!copyAndTrimUpper(fieldStarts[3], fieldLens[3], counterString, sizeof(counterString)) || strlen(counterString) == 0) {
         return false;
     }
 

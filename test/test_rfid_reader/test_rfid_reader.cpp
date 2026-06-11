@@ -50,7 +50,8 @@ void test_calculateUidChecksum(void) {
     TEST_ASSERT_EQUAL(calculateUidChecksum("ABCDEF09", 8), calculateUidChecksum("abcdef09", 8));
 }
 
-// Test parsing of full payload string: "UID|<8-digit-hex>|<2-digit-checksum>"
+// Test parsing of payload strings:
+// "UID|<8-digit-hex>", "UID|<8-digit-hex>|<2-digit-checksum>",
 // or "UID|<8-digit-hex>|<2-digit-checksum>|<counter>"
 void test_parseRfidPayload(void) {
     String uidResult;
@@ -59,12 +60,13 @@ void test_parseRfidPayload(void) {
     TEST_ASSERT_TRUE(parseRfidPayload("UID|12345678", uidResult));
     TEST_ASSERT_EQUAL_STRING("12345678", uidResult.c_str());
 
+    // Valid payload with checksum only (3 fields)
+    TEST_ASSERT_TRUE(parseRfidPayload("UID|12345678|A4", uidResult));
+    TEST_ASSERT_EQUAL_STRING("12345678", uidResult.c_str());
+
     // Valid full payload (4 fields) with counter
     TEST_ASSERT_TRUE(parseRfidPayload("UID|12345678|A4|1", uidResult));
     TEST_ASSERT_EQUAL_STRING("12345678", uidResult.c_str());
-
-    // Invalid format: 3 fields (legacy) should be rejected
-    TEST_ASSERT_FALSE(parseRfidPayload("UID|12345678|A4", uidResult));
 
     // Invalid format (missing prefix)
     TEST_ASSERT_FALSE(parseRfidPayload("12345678|A4|1", uidResult));
