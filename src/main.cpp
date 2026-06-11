@@ -102,8 +102,7 @@ void loop() {
     update_sensor();
 
     String uid = "";
-    bool isAuto = false;
-    if (!readRfidFromSerial(uid, isAuto)) {
+    if (!readRfidFromSerial(uid)) {
         return;
     }
 
@@ -118,10 +117,10 @@ void loop() {
     }
 
     if (vi_tri_tim_thay != -1) {
-        lay_xe(vi_tri_tim_thay, isAuto);
+        lay_xe(vi_tri_tim_thay);
         uart_flush_input(UART_NUM_0);
     } else {
-        gui_xe(uid, isAuto);
+        gui_xe(uid);
         uart_flush_input(UART_NUM_0);
     }
 

@@ -57,7 +57,7 @@ static bool copyAndTrimUpper(const char *start, size_t length, char *dest, size_
     return true;
 }
 
-static bool parseRfidPayload(const String &payload, String &uid, bool &isAuto) {
+static bool parseRfidPayload(const String &payload, String &uid) {
     const char *data = payload.c_str();
     size_t payloadLen = payload.length();
     if (payloadLen == 0) {
@@ -92,7 +92,7 @@ static bool parseRfidPayload(const String &payload, String &uid, bool &isAuto) {
     fieldLens[fieldCount] = p - fieldStart;
     fieldCount++;
 
-    if (fieldCount != 2 && fieldCount != 5) {
+    if (fieldCount != 2 && fieldCount != 4) {
         return false;
     }
 
@@ -110,23 +110,17 @@ static bool parseRfidPayload(const String &payload, String &uid, bool &isAuto) {
     if (fieldCount == 2) {
         lastRfidCounter = "";
         uid = String(uidString);
-        isAuto = false;
         return true;
     }
 
     char checksumString[3] = {0};
     char counterString[17] = {0};
-    char isAutoString[6] = {0};
 
     if (!copyAndTrimUpper(fieldStarts[2], fieldLens[2], checksumString, sizeof(checksumString)) || strlen(checksumString) != 2) {
         return false;
     }
 
     if (!copyAndTrimUpper(fieldStarts[3], fieldLens[3], counterString, sizeof(counterString)) || strlen(counterString) == 0) {
-        return false;
-    }
-
-    if (!copyAndTrimUpper(fieldStarts[4], fieldLens[4], isAutoString, sizeof(isAutoString))) {
         return false;
     }
 
@@ -146,11 +140,10 @@ static bool parseRfidPayload(const String &payload, String &uid, bool &isAuto) {
 
     lastRfidCounter = counterString;
     uid = String(uidString);
-    isAuto = (strcmp(isAutoString, "TRUE") == 0);
     return true;
 }
 
-bool readRfidFromSerial(String &uid, bool &isAuto) {
+bool readRfidFromSerial(String &uid) {
     while (Serial.available() > 0) {
         String tin_nhan = Serial.readStringUntil('\n');
         tin_nhan.trim();
@@ -166,7 +159,7 @@ bool readRfidFromSerial(String &uid, bool &isAuto) {
         }
 
         String parsedUid;
-        if (!tin_nhan.startsWith("UID|") || !parseRfidPayload(tin_nhan, parsedUid, isAuto)) {
+        if (!tin_nhan.startsWith("UID|") || !parseRfidPayload(tin_nhan, parsedUid)) {
             LOG_E(TAG_RFID, "invalid payload: %s", tin_nhan.c_str());
             return false;
         }

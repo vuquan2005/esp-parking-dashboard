@@ -3,6 +3,6 @@
 
 #include <Arduino.h>
 
-bool readRfidFromSerial(String &uid, bool &isAuto);
+bool readRfidFromSerial(String &uid);
 
 #endif // RFID_READER_H
