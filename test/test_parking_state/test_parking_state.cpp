@@ -1,6 +1,17 @@
 #include <unity.h>
 #include <Arduino.h>
 #include "parking_state.h"
+#include "../../src/log.h"
+
+// Stub logging functions to avoid linking the full logging module in unit tests.
+extern "C" {
+void log_print(log_level_t level, const char *tag, const char *format, ...) {}
+void log_print_inline(log_level_t level, const char *tag, const char *format, ...) {}
+void log_flush(void) {}
+}
+
+// Include implementation directly so tested symbols are compiled into this test binary.
+#include "../../src/parking_state.cpp"
 
 // Set up before each test
 void setUp(void) {

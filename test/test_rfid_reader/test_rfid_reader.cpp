@@ -89,6 +89,7 @@ void test_parseRfidPayload(void) {
 }
 
 void setup() {
+    Serial.begin(115200);
     delay(2000);
     UNITY_BEGIN();
     RUN_TEST(test_isValidRfidUid);
