@@ -22,7 +22,7 @@ WifiManager wifiManager;
 ParkingHandler parkingHandler(wifiManager);
 
 // -1 for non-delay functions, otherwise delay in ms
-void handleDelay(unsigned long ms) {
+void softDelay(unsigned long ms) {
     unsigned long start = millis();
     parkingHandler.loop();
     webManager.loop();
@@ -76,12 +76,12 @@ void setup() {
     Serial1.println();
     Serial2.println();
 
-    handleDelay(9000);
+    softDelay(9000);
 
     don_duong_vet_can(1, 1);
     don_duong_vet_can(2, 1);
 
-    motor_keo(2, 1, "KD", 1000);
+    motor_keo(2, 1, "KD", 800);
 
     motor_keo(2, 1, "KU", 5000);
     motor_keo(2, 2, "KU", 5000);
@@ -127,4 +127,24 @@ void loop() {
     }
 
     delay(500);
+}
+
+void kich_ban_auto() {
+    
+    motor_keo(3, 1, "KD", 20000);
+    softDelay(2000);
+    motor_keo(3, 1, "KU", 20000);
+    softDelay(500);
+
+    day_den_sw(2, 1, "NT", 1);
+    softDelay(500);
+    motor_keo(2, 1, "KD", 20000);
+    softDelay(2000);
+    motor_keo(2, 1, "KU", 20000);
+
+    // Complete
+
+    softDelay(3000);
+    day_den_sw(2, 1, "NP", 1);
+    softDelay(500);
 }

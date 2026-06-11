@@ -12,7 +12,7 @@ bool sw[4][5];
 bool cam_bien_vi_tri[4][5];
 
 ParkingStatus_Status SlotStatus[10] = {ParkingStatus_Status_UNKNOWN};
-uint32_t Grid[12] = {1, 2, 3, 4, 5, 6, 7, 0, 8, 9, 10, 0};
+uint32_t Grid[12] = {1, 2, 3, 4, 0, 5, 6, 7, 0, 8, 9, 10};
 
 static uint32_t event_id_counter = 1;
 
