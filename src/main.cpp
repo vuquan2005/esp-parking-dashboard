@@ -56,6 +56,8 @@ void setup() {
 
     parkingHandler.begin();
 
+    LOG_I_INLINE(TAG_MAIN, "\033[0;32m web communication initialized! \033[0m");
+
     ledcSetup(KENH_PWM, TAN_SO_PWM, DO_PHAN_GIAI);
     ledcAttachPin(PIN_SERVO_CONG, KENH_PWM);
     dung_motor_cong();
@@ -66,9 +68,9 @@ void setup() {
     memset(sw, 0, sizeof(sw));
     memset(cam_bien_vi_tri, 0, sizeof(cam_bien_vi_tri));
 
-    initParkingPositions();
+    LOG_I_INLINE(TAG_MAIN, "\033[0;32m pin setup completed! \033[0m");
 
-    LOG_I_INLINE(TAG_MAIN, "\033[0;32m completed! \033[0m");
+    initParkingPositions();
 
     Serial.println();
     Serial1.println();
