@@ -17,6 +17,10 @@ struct O_Do {
 #define tang row
 #define cot col
 
+// Initialize the parking slot lookup array `ds_o`.
+// Slots 0..2 map to floor 1, columns 1..3.
+// Slots 3..5 map to floor 2, columns 1..3.
+// Slots 6..9 map to floor 3, columns 1..4.
 extern O_Do ds_o[10];
 extern bool sw[4][5];
 extern bool cam_bien_vi_tri[4][5];

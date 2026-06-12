@@ -13,7 +13,7 @@ static const char *TAG_BUTTON = "BUTTON";
 
 static const unsigned long BUTTON_DEBOUNCE_MS = 50;
 static const unsigned long BUTTON_PRESS_TIMEOUT_MS = 20000;
-static const unsigned int BUTTON_PRESS_AUTO_TIME_OUT = 2000;
+static const unsigned int BUTTON_AUTO_TIME_OUT = 5000;
 
 static bool waitForButtonPress(unsigned long timeoutMs) {
     if (timeoutMs == 0) {
@@ -39,6 +39,10 @@ static bool waitForButtonPress(unsigned long timeoutMs) {
     return false;
 }
 
+// Initialize the parking slot lookup array `ds_o`.
+// Slots 0..2 map to floor 1, columns 1..3.
+// Slots 3..5 map to floor 2, columns 1..3.
+// Slots 6..9 map to floor 3, columns 1..4.
 void initParkingPositions() {
     for (int i = 0; i < 3; i++) {
         ds_o[i].tang = 1;
@@ -314,7 +318,7 @@ void don_duong_vet_can(int row, int cot_trong_yc) {
 }
 
 void cho_nguoi_dung_xac_nhan(bool isAuto) {
-    unsigned long timeoutMs = isAuto ? BUTTON_PRESS_AUTO_TIME_OUT : BUTTON_PRESS_TIMEOUT_MS;
+    unsigned long timeoutMs = isAuto ? BUTTON_AUTO_TIME_OUT : BUTTON_PRESS_TIMEOUT_MS;
     LOG_I_INLINE(TAG_BUTTON, "Wait for button press...");
     if (!waitForButtonPress(timeoutMs)) {
         LOG_E(TAG_BUTTON, "TIMEOUT CHO NUT XAC NHAN!");
@@ -405,24 +409,10 @@ void lay_xe(int target, bool isAuto) {
 }
 
 void kich_ban_auto() {
-    // Simulate a car entering slot 1 (pallet_id = 1)
+    
+    gui_xe(6, true);
 
-    motor_keo(3, 1, "KD", 20000);
-    softDelay(2000);
-    motor_keo(3, 1, "KU", 20000);
-    softDelay(500);
+    gui_xe(3, true);
 
-    // Simulate a car entering slot 5 (pallet_id = 5)
-
-    day_den_sw(2, 1, "NT", 1);
-    softDelay(500);
-    motor_keo(2, 1, "KD", 20000);
-    softDelay(2000);
-    motor_keo(2, 1, "KU", 20000);
-
-    // Simulate a car leaving slot 1 (pallet_id = 1)
-
-    softDelay(3000);
-    day_den_sw(2, 1, "NP", 1);
-    softDelay(500);
+    softDelay(8000);
 }
