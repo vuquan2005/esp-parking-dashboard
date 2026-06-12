@@ -98,6 +98,10 @@ void setup() {
 }
 
 void loop() {
+    while (false) { // Thay bang flag auto (yêu cầu reset để kích hoạt lại)
+        kich_ban_auto();
+    }
+
     parkingHandler.loop();
     webManager.loop();
 
@@ -119,32 +123,24 @@ void loop() {
     }
 
     if (vi_tri_tim_thay != -1) {
-        lay_xe(vi_tri_tim_thay);
-        uart_flush_input(UART_NUM_0);
+        lay_xe(vi_tri_tim_thay, false);
+
+        ds_o[vi_tri_tim_thay].ma_the_uid = "";
     } else {
-        gui_xe(uid);
-        uart_flush_input(UART_NUM_0);
+        int target = -1;
+        for (int i = 0; i < 10; i++) {
+            if (ds_o[i].ma_the_uid == "") {
+                target = i;
+                break;
+            }
+        }
+
+        if (target != -1) {
+            ds_o[target].ma_the_uid = uid;
+            gui_xe(target, false);
+        }
     }
+    uart_flush_input(UART_NUM_0);
 
     delay(500);
-}
-
-void kich_ban_auto() {
-    
-    motor_keo(3, 1, "KD", 20000);
-    softDelay(2000);
-    motor_keo(3, 1, "KU", 20000);
-    softDelay(500);
-
-    day_den_sw(2, 1, "NT", 1);
-    softDelay(500);
-    motor_keo(2, 1, "KD", 20000);
-    softDelay(2000);
-    motor_keo(2, 1, "KU", 20000);
-
-    // Complete
-
-    softDelay(3000);
-    day_den_sw(2, 1, "NP", 1);
-    softDelay(500);
 }

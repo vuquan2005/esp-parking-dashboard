@@ -330,22 +330,9 @@ void cho_nguoi_dung_xac_nhan(bool isAuto) {
     }
 }
 
-void gui_xe(const String &uid, bool isAuto) {
-    int target = -1;
-    for (int i = 0; i < 10; i++) {
-        if (ds_o[i].ma_the_uid == "") {
-            target = i;
-            break;
-        }
-    }
-
-    if (target == -1) {
-        return;
-    }
-
+static void xu_ly_xe_chung(int target, bool is_gui, bool isAuto) {
     int t = ds_o[target].row;
     int c = ds_o[target].col;
-    ds_o[target].ma_the_uid = uid;
 
     int pallet_id = rowPallet2SlotID(t, c);
     int slotIndex = rowPallet2SlotIndex(t, c);
@@ -355,10 +342,15 @@ void gui_xe(const String &uid, bool isAuto) {
     }
 
     recalcStatus();
-    SlotStatus[slotIndex] = ParkingStatus_Status_PENDING;
+    SlotStatus[slotIndex] = is_gui ? ParkingStatus_Status_PENDING : ParkingStatus_Status_PROCESSING;
     sendCurrentParkingStatus();
-    sendCurrentParkingEvent(pallet_id, ParkingEvent_EventType_IN, false);
-    LOG_I(TAG_PARKING, "GUI XE VAO T%d-C%d", t, c);
+    sendCurrentParkingEvent(pallet_id, is_gui ? ParkingEvent_EventType_IN : ParkingEvent_EventType_OUT, false);
+    
+    if (is_gui) {
+        LOG_I(TAG_PARKING, "GUI XE VAO T%d-C%d", t, c);
+    } else {
+        LOG_I(TAG_PARKING, "LAY XE T%d-C%d", t, c);
+    }
 
     if (t > 1) {
         if (t == 2) {
@@ -391,70 +383,46 @@ void gui_xe(const String &uid, bool isAuto) {
             update_sensor();
             delay(10);
         }
+        gui_lenh_motor("st");
     }
-    gui_lenh_motor("st");
+
+    if (!is_gui) {
+        LOG_I(TAG_PARKING, "HOAN TAT LAY XE. O DA TRONG.");
+    }
 
     recalcStatus();
     sendCurrentParkingStatus();
-    sendCurrentParkingEvent(pallet_id, ParkingEvent_EventType_IN, true);
-    beep(1);
+    sendCurrentParkingEvent(pallet_id, is_gui ? ParkingEvent_EventType_IN : ParkingEvent_EventType_OUT, true);
+    beep(is_gui ? 1 : 2);
+}
+
+void gui_xe(int target, bool isAuto) {
+    xu_ly_xe_chung(target, true, isAuto);
 }
 
 void lay_xe(int target, bool isAuto) {
-    int t = ds_o[target].row;
-    int c = ds_o[target].col;
-    int pallet_id = rowPallet2SlotID(t, c);
-    int slotIndex = rowPallet2SlotIndex(t, c);
-    if (pallet_id < 1 || slotIndex < 0) {
-        LOG_W(TAG_PARSER, "Invalid slot mapping for target=%d (t=%d,c=%d)", target, t, c);
-        return;
-    }
+    xu_ly_xe_chung(target, false, isAuto);
+}
 
-    recalcStatus();
-    SlotStatus[slotIndex] = ParkingStatus_Status_PROCESSING;
-    sendCurrentParkingStatus();
-    sendCurrentParkingEvent(pallet_id, ParkingEvent_EventType_OUT, false);
-    LOG_I(TAG_PARKING, "LAY XE T%d-C%d", t, c);
+void kich_ban_auto() {
+    // Simulate a car entering slot 1 (pallet_id = 1)
 
-    if (t > 1) {
-        if (t == 2) {
-            don_duong_vet_can(2, 4);
-        }
-        for (int i = 1; i < t; i++) {
-            don_duong_vet_can(i, c);
-        }
+    motor_keo(3, 1, "KD", 20000);
+    softDelay(2000);
+    motor_keo(3, 1, "KU", 20000);
+    softDelay(500);
 
-        SlotStatus[slotIndex] = ParkingStatus_Status_PROCESSING;
-        sendCurrentParkingStatus();
+    // Simulate a car entering slot 5 (pallet_id = 5)
 
-        gui_lenh_motor(String(t) + String(c) + "KD");
-        delay(300);
-        while (!cam_bien_vi_tri[1][c]) {
-            update_sensor();
-            delay(10);
-        }
-        gui_lenh_motor("st");
-    }
+    day_den_sw(2, 1, "NT", 1);
+    softDelay(500);
+    motor_keo(2, 1, "KD", 20000);
+    softDelay(2000);
+    motor_keo(2, 1, "KU", 20000);
 
-    mo_cong();
-    cho_nguoi_dung_xac_nhan(isAuto);
-    dong_cong();
+    // Simulate a car leaving slot 1 (pallet_id = 1)
 
-    if (t > 1) {
-        gui_lenh_motor(String(t) + String(c) + "KU");
-        delay(300);
-        while (!cam_bien_vi_tri[t][c]) {
-            update_sensor();
-            delay(10);
-        }
-        gui_lenh_motor("st");
-    }
-
-    ds_o[target].ma_the_uid = "";
-    LOG_I(TAG_PARKING, "HOAN TAT LAY XE. O DA TRONG.");
-
-    recalcStatus();
-    sendCurrentParkingStatus();
-    sendCurrentParkingEvent(pallet_id, ParkingEvent_EventType_OUT, true);
-    beep(2);
+    softDelay(3000);
+    day_den_sw(2, 1, "NP", 1);
+    softDelay(500);
 }

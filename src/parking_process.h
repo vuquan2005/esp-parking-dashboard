@@ -20,11 +20,13 @@ void motor_keo(int t, int c, const String &huong, int timeOut);
 void day_den_sw(int row, int pallet, const String &huong, int sw_target);
 void don_duong_vet_can(int row, int cot_trong_yc);
 void cho_nguoi_dung_xac_nhan(bool isAuto = false);
-void gui_xe(const String &uid, bool isAuto = false);
+void gui_xe(int target, bool isAuto = false);
 void lay_xe(int target, bool isAuto = false);
+void kich_ban_auto();
 
 extern WebManager webManager;
 extern WifiManager wifiManager;
 extern ParkingHandler parkingHandler;
+extern void softDelay(unsigned long ms);
 
 #endif // PARKING_PROCESS_H
