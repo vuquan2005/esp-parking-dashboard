@@ -1,3 +1,11 @@
+/**
+ * @file parking_handler.h
+ * @brief Protobuf command handling for parking status and events.
+ *
+ * This header defines the parking handler class responsible for receiving
+ * raw protobuf binary payloads from asynchronous callbacks, decoding them on
+ * the main thread, and sending outbound protobuf messages to connected clients.
+ */
 #pragma once
 
 #include <Arduino.h>
