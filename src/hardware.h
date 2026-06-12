@@ -5,7 +5,7 @@
 
 #define PIN_BUZZER 4
 #define PIN_NUT_XAC_NHAN 14
-#define PIN_SERVO_CONG 32
+#define PIN_SERVO_CONG 32 // cant use in eso32s3
 
 #define PIN_UART_RX2 16
 #define PIN_UART_TX2 17

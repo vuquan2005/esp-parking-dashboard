@@ -11,6 +11,12 @@ Hệ thống điều khiển một bãi đỗ xe dạng lưới gồm **10 ô đ
 - **Tầng 2 (T2)**: 3 ô đỗ (vị trí 1-3)
 - **Tầng 3 (T3)**: 4 ô đỗ (vị trí 1-4)
 
+> Lưu ý: mã nguồn hiện tại dùng hai hệ thống định nghĩa vị trí khác nhau.
+> - `Grid` là bản đồ 12 phần tử mô tả vị trí cơ học của pallet trong cấu trúc 3x4 (3 hàng, 4 cột). Mỗi mục `Grid[i]` chứa `pallet_id` hoặc `0` nếu ô pallet trống.
+> - `ds_o` là mảng 10 ô đỗ logic, mỗi phần tử lưu `rfid` cùng thông tin `row`/`col` trong hệ định vị tầng/ô. `ds_o` chỉ dùng cho 10 ô đỗ thực tế và gán theo floor/column 1-based.
+> 
+> Nói cách khác, cả hai đều mô tả cùng không gian vật lý, nhưng `Grid` dùng cấu trúc pallet cơ học 12 vị trí, còn `ds_o` chỉ dùng 10 ô đỗ thực tế và ánh xạ khác nhau giữa slot ID, row và column.
+
 Hệ thống hoạt động dựa trên cơ chế:
 1. **Quét thẻ RFID** (hoặc nhận lệnh thủ công qua Serial): Nhận diện xe vào/ra bằng [src/rfid_reader.cpp](src/rfid_reader.cpp).
 2. **Hệ thống điều khiển cơ khí**:
@@ -120,7 +126,7 @@ Dự án sử dụng PlatformIO. Bạn có thể xây dựng và nạp chương 
 pio run -e esp32
 
 # Biên dịch cho ESP32-S3
-pio run -e esp32s3
+# pio run -e esp32s3
 ```
 
 ### 3. Nạp chương trình lên Board (Upload)
@@ -130,7 +136,7 @@ Kết nối ESP32 với máy tính qua cổng USB và chạy lệnh nạp:
 pio run -t upload -e esp32
 
 # Nạp cho ESP32-S3
-pio run -t upload -e esp32s3
+# pio run -t upload -e esp32s3
 ```
 
 ### 4. Giám sát Serial Log
@@ -145,5 +151,5 @@ pio device monitor -b 115200
 
 Dự án cung cấp các bộ test tại thư mục `test/` để xác thực hoạt động của các thành phần cốt lõi. Chạy test trên phần cứng thực tế qua cổng COM đã chỉ định bằng lệnh:
 ```bash
-pio test -e esp32s3
+pio test -e esp32s3 -vv
 ```
