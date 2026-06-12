@@ -56,10 +56,10 @@ void WebManager::begin() {
         }
 
         if (url == "/hotspot-detect.html" || url == "/library/test/success.html" || url == "/success.html") {
-            // const char *APPLE_SUCCESS = "<HTML><HEAD><TITLE>Success</TITLE></HEAD>"
-            //                             "<BODY>Success</BODY></HTML>";
-            // request->send(200, "text/html", APPLE_SUCCESS);
-            request->redirect(targetUrl);
+            const char *APPLE_SUCCESS = "<HTML><HEAD><TITLE>Success</TITLE></HEAD>"
+                                        "<BODY>Success</BODY></HTML>";
+            request->send(200, "text/html", APPLE_SUCCESS);
+            // request->redirect(targetUrl);
             return;
         }
 
