@@ -414,5 +414,5 @@ void kich_ban_auto() {
 
     gui_xe(3, true);
 
-    softDelay(8000);
+    softDelay(6000);
 }

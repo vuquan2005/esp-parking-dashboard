@@ -30,4 +30,7 @@ static const int TAN_SO_PWM = 50;
 /** PWM resolution bits. */
 static const int DO_PHAN_GIAI = 12;
 
+#define PIN_CHON_CHE_DO 18
+
+
 #endif // HARDWARE_H
